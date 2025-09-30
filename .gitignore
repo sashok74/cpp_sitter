@@ -1,0 +1,26 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Conan
+conan_toolchain.cmake
+conan_paths.cmake
+conanbuildinfo.*
+CMakeUserPresets.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Compiled
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# Test outputs
+Testing/
+*.log
