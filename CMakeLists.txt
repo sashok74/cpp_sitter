@@ -1,0 +1,101 @@
+cmake_minimum_required(VERSION 3.20)
+project(cpp-treesitter-mcp VERSION 1.0.0 LANGUAGES CXX)
+
+# C++20 required
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Export compile commands for IDE
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Conan integration
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
+list(APPEND CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
+
+# Build options
+option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_STDIO_SERVER "Build stdio MCP server" ON)
+option(BUILD_SSE_SERVER "Build SSE MCP server" ON)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+
+# Find dependencies through Conan
+find_package(nlohmann_json REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(CLI11 REQUIRED)
+
+if(BUILD_SSE_SERVER)
+    find_package(httplib REQUIRED)
+endif()
+
+if(BUILD_TESTS)
+    find_package(GTest REQUIRED)
+    enable_testing()
+endif()
+
+# Tree-sitter via FetchContent
+include(FetchContent)
+
+FetchContent_Declare(
+    tree-sitter
+    GIT_REPOSITORY https://github.com/tree-sitter/tree-sitter.git
+    GIT_TAG v0.22.6
+)
+
+FetchContent_Declare(
+    tree-sitter-cpp
+    GIT_REPOSITORY https://github.com/tree-sitter/tree-sitter-cpp.git
+    GIT_TAG v0.22.0
+)
+
+FetchContent_MakeAvailable(tree-sitter tree-sitter-cpp)
+
+# Compiler warnings
+if(MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# Coverage
+if(ENABLE_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(--coverage -O0 -g)
+        add_link_options(--coverage)
+    endif()
+endif()
+
+# Subdirectories
+add_subdirectory(src)
+
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
+# Installation (will be enabled after targets are created)
+# if(BUILD_STDIO_SERVER AND TARGET mcp_stdio_server)
+#     install(TARGETS mcp_stdio_server
+#         RUNTIME DESTINATION bin
+#     )
+# endif()
+#
+# if(BUILD_SSE_SERVER AND TARGET mcp_sse_server)
+#     install(TARGETS mcp_sse_server
+#         RUNTIME DESTINATION bin
+#     )
+# endif()
+#
+# install(DIRECTORY claude/
+#     DESTINATION share/cpp-treesitter-mcp/claude
+# )
+#
+# # Configure installation script
+# configure_file(
+#     ${CMAKE_SOURCE_DIR}/scripts/install_claude_agent.sh.in
+#     ${CMAKE_BINARY_DIR}/install_claude_agent.sh
+#     @ONLY
+# )
+#
+# install(PROGRAMS ${CMAKE_BINARY_DIR}/install_claude_agent.sh
+#     DESTINATION bin
+# )

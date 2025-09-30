@@ -24,3 +24,9 @@ CMakeUserPresets.json
 # Test outputs
 Testing/
 *.log
+
+# Coverage
+*.gcda
+*.gcno
+*.gcov
+coverage/
