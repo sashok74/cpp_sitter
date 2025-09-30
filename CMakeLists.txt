@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(cpp-treesitter-mcp VERSION 1.0.0 LANGUAGES CXX)
+project(cpp-treesitter-mcp VERSION 1.0.0 LANGUAGES C CXX)
 
 # C++20 required
 set(CMAKE_CXX_STANDARD 20)
@@ -49,6 +49,45 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(tree-sitter tree-sitter-cpp)
+
+# Build tree-sitter library manually (no CMakeLists.txt in upstream)
+file(GLOB TREE_SITTER_SOURCES
+    "${tree-sitter_SOURCE_DIR}/lib/src/*.c"
+)
+list(FILTER TREE_SITTER_SOURCES EXCLUDE REGEX "lib.c$")
+
+add_library(tree-sitter STATIC ${TREE_SITTER_SOURCES})
+target_include_directories(tree-sitter
+    PUBLIC
+        ${tree-sitter_SOURCE_DIR}/lib/include
+    PRIVATE
+        ${tree-sitter_SOURCE_DIR}/lib/src
+        ${tree-sitter_SOURCE_DIR}/lib/src/wasm
+)
+target_compile_definitions(tree-sitter PRIVATE _POSIX_C_SOURCE=200112L)
+set_target_properties(tree-sitter PROPERTIES
+    C_STANDARD 11
+    POSITION_INDEPENDENT_CODE ON
+)
+
+# Build tree-sitter-cpp grammar
+add_library(tree-sitter-cpp STATIC
+    ${tree-sitter-cpp_SOURCE_DIR}/src/parser.c
+    ${tree-sitter-cpp_SOURCE_DIR}/src/scanner.c
+)
+target_include_directories(tree-sitter-cpp
+    PUBLIC
+        ${tree-sitter-cpp_SOURCE_DIR}/src
+)
+target_link_libraries(tree-sitter-cpp PUBLIC tree-sitter)
+set_target_properties(tree-sitter-cpp PROPERTIES
+    C_STANDARD 11
+    POSITION_INDEPENDENT_CODE ON
+)
+
+# Create alias for easier linking
+add_library(tree-sitter::tree-sitter ALIAS tree-sitter)
+add_library(tree-sitter::cpp ALIAS tree-sitter-cpp)
 
 # Compiler warnings
 if(MSVC)
