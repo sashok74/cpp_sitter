@@ -11,7 +11,7 @@ if(BUILD_TESTS)
         INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
     # Subdirectories will be added as we implement tests
-    # add_subdirectory(core)
+    add_subdirectory(core)
     # add_subdirectory(mcp)
     # add_subdirectory(tools)
     # add_subdirectory(integration)
