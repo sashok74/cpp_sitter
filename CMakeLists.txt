@@ -111,6 +111,18 @@ if(BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# Configure install script
+configure_file(
+    ${CMAKE_SOURCE_DIR}/scripts/install_claude_agent.sh.in
+    ${CMAKE_BINARY_DIR}/scripts/install_claude_agent.sh
+    @ONLY
+)
+
+# Install scripts
+install(PROGRAMS ${CMAKE_BINARY_DIR}/scripts/install_claude_agent.sh
+    DESTINATION share/cpp-treesitter-mcp
+)
+
 # Installation (will be enabled after targets are created)
 # if(BUILD_STDIO_SERVER AND TARGET mcp_stdio_server)
 #     install(TARGETS mcp_stdio_server

@@ -12,7 +12,7 @@ if(BUILD_TESTS)
 
     # Subdirectories will be added as we implement tests
     add_subdirectory(core)
-    # add_subdirectory(mcp)
-    # add_subdirectory(tools)
-    # add_subdirectory(integration)
+    add_subdirectory(mcp)
+    add_subdirectory(tools)
+    add_subdirectory(integration)
 endif()

@@ -1,0 +1,136 @@
+#!/bin/bash
+# Installation script for cpp-treesitter-mcp Claude Code integration
+# This script configures the MCP server and sub-agent for Claude Code CLI
+
+set -e
+
+PROJECT_NAME="cpp-treesitter-mcp"
+INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
+MCP_SERVER_PATH="${INSTALL_PREFIX}/bin/mcp_stdio_server"
+
+# Determine OS and config paths
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    CLAUDE_CONFIG_DIR="$HOME/Library/Application Support/Claude"
+    CLAUDE_AGENTS_DIR="$HOME/.claude/agents"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    CLAUDE_CONFIG_DIR="$HOME/.config/claude"
+    CLAUDE_AGENTS_DIR="$HOME/.claude/agents"
+else
+    echo "Unsupported operating system: $OSTYPE"
+    exit 1
+fi
+
+CLAUDE_CONFIG_FILE="${CLAUDE_CONFIG_DIR}/claude_desktop_config.json"
+
+echo "=== cpp-treesitter-mcp Claude Integration Setup ==="
+echo ""
+echo "Installation prefix: ${INSTALL_PREFIX}"
+echo "MCP server path: ${MCP_SERVER_PATH}"
+echo "Claude config dir: ${CLAUDE_CONFIG_DIR}"
+echo "Claude agents dir: ${CLAUDE_AGENTS_DIR}"
+echo ""
+
+# Check if mcp_stdio_server exists
+if [ ! -f "${MCP_SERVER_PATH}" ]; then
+    echo "ERROR: mcp_stdio_server not found at ${MCP_SERVER_PATH}"
+    echo "Please run 'sudo cmake --install .' first"
+    exit 1
+fi
+
+# Create config directory if needed
+mkdir -p "${CLAUDE_CONFIG_DIR}"
+mkdir -p "${CLAUDE_AGENTS_DIR}"
+
+# Add MCP server to config
+echo "Configuring MCP server in Claude config..."
+
+if [ -f "${CLAUDE_CONFIG_FILE}" ]; then
+    echo "Existing config found, will merge with new MCP server entry"
+    # Backup existing config
+    cp "${CLAUDE_CONFIG_FILE}" "${CLAUDE_CONFIG_FILE}.backup"
+    echo "Backup created at ${CLAUDE_CONFIG_FILE}.backup"
+else
+    echo "Creating new Claude config file"
+    echo '{"mcpServers":{}}' > "${CLAUDE_CONFIG_FILE}"
+fi
+
+# Use Python or jq to update JSON (prefer jq if available)
+if command -v jq &> /dev/null; then
+    # Update using jq
+    tmp_file=$(mktemp)
+    jq --arg path "${MCP_SERVER_PATH}" \
+       '.mcpServers["cpp-treesitter"] = {
+           "command": $path,
+           "args": ["--log-level", "info"]
+       }' "${CLAUDE_CONFIG_FILE}" > "${tmp_file}"
+    mv "${tmp_file}" "${CLAUDE_CONFIG_FILE}"
+    echo "MCP server registered using jq"
+elif command -v python3 &> /dev/null; then
+    # Update using python
+    python3 << EOF
+import json
+import sys
+
+config_file = "${CLAUDE_CONFIG_FILE}"
+with open(config_file, 'r') as f:
+    config = json.load(f)
+
+if 'mcpServers' not in config:
+    config['mcpServers'] = {}
+
+config['mcpServers']['cpp-treesitter'] = {
+    'command': '${MCP_SERVER_PATH}',
+    'args': ['--log-level', 'info']
+}
+
+with open(config_file, 'w') as f:
+    json.dump(config, f, indent=2)
+
+print("MCP server registered using Python")
+EOF
+else
+    echo "WARNING: Neither jq nor python3 found, cannot update config automatically"
+    echo "Please manually add the following to ${CLAUDE_CONFIG_FILE}:"
+    echo ""
+    echo '{
+  "mcpServers": {
+    "cpp-treesitter": {
+      "command": "'${MCP_SERVER_PATH}'",
+      "args": ["--log-level", "info"]
+    }
+  }
+}'
+    echo ""
+fi
+
+# Copy sub-agent config
+AGENT_SOURCE="@CMAKE_SOURCE_DIR@/claude/agents/ts-strategist.json"
+AGENT_DEST="${CLAUDE_AGENTS_DIR}/ts-strategist.json"
+
+if [ -f "${AGENT_SOURCE}" ]; then
+    echo "Installing sub-agent config..."
+    cp "${AGENT_SOURCE}" "${AGENT_DEST}"
+    echo "Sub-agent config installed at ${AGENT_DEST}"
+else
+    echo "WARNING: Sub-agent config not found at ${AGENT_SOURCE}"
+fi
+
+echo ""
+echo "=== Installation Complete ==="
+echo ""
+echo "The cpp-treesitter-mcp server has been configured for Claude Code."
+echo ""
+echo "Usage:"
+echo "  1. Regular MCP tools (available to all Claude Code sessions):"
+echo "     - Tools will be available automatically in Claude Code"
+echo ""
+echo "  2. Specialized sub-agent:"
+echo "     claude @ts-strategist \"analyze src/core/TreeSitterParser.cpp\""
+echo "     claude @ts-strategist \"find all virtual functions in src/\""
+echo ""
+echo "Verification:"
+echo "  - Check config: cat ${CLAUDE_CONFIG_FILE}"
+echo "  - Test server: echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}' | ${MCP_SERVER_PATH}"
+echo ""
