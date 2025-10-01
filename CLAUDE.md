@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **cpp-treesitter-mcp** (C++ Tree-sitter MCP Server) - a high-performance MCP (Model Context Protocol) server written in C++20 that provides deep C++ code analysis capabilities using tree-sitter. It integrates with Claude Code CLI as a specialized sub-agent for static code analysis.
+This is **tree-sitter-mcp** (C++ Tree-sitter MCP Server) - a high-performance MCP (Model Context Protocol) server written in C++20 that provides deep C++ code analysis capabilities using tree-sitter. It integrates with Claude Code CLI as a specialized sub-agent for static code analysis.
 
 **Key Technologies:**
 - C++20 (requires GCC 11+, Clang 14+, or MSVC 19.30+)

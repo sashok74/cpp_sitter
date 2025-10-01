@@ -1,8 +1,8 @@
-# 🚀 Быстрый старт cpp-treesitter-mcp
+# 🚀 Быстрый старт tree-sitter-mcp
 
 ## Описание
 
-**cpp-treesitter-mcp** - это высокопроизводительный MCP (Model Context Protocol) сервер на C++20 для глубокого анализа C++ кода с использованием tree-sitter. Интегрируется с Claude Code CLI для интеллектуального анализа исходного кода.
+**tree-sitter-mcp** - это высокопроизводительный MCP (Model Context Protocol) сервер на C++20 для глубокого анализа C++ кода с использованием tree-sitter. Интегрируется с Claude Code CLI для интеллектуального анализа исходного кода.
 
 ---
 
@@ -80,7 +80,7 @@ ctest --output-on-failure
 sudo cmake --install .
 
 # 7. Настройка Claude Code
-sudo bash /usr/local/share/cpp-treesitter-mcp/install_claude_agent.sh
+sudo bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 ```
 
 ### Проверка установки
@@ -284,7 +284,7 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
 
 Если конфигурация отсутствует, запустите:
 ```bash
-sudo bash /usr/local/share/cpp-treesitter-mcp/install_claude_agent.sh
+sudo bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 ```
 
 ### Шаг 3: Проверка конфигурации sub-agent
@@ -616,4 +616,4 @@ claude @ts-strategist 'execute this query: "(class_specifier name: (type_identif
 
 **Версия документа**: 1.0
 **Дата**: 2025-10-01
-**Проект**: cpp-treesitter-mcp
+**Проект**: tree-sitter-mcp

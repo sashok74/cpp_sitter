@@ -1,8 +1,8 @@
 from conan import ConanFile
-from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
+from conan.tools.cmake import CMake, CMakeToolchain, CMakeDeps, cmake_layout
 
 class CppTreesitterMcpConan(ConanFile):
-    name = "cpp-treesitter-mcp"
+    name = "tree-sitter-mcp"
     version = "1.0.0"
 
     # Metadata
@@ -47,6 +47,9 @@ class CppTreesitterMcpConan(ConanFile):
         tc.variables["BUILD_TESTS"] = self.options.build_tests
         tc.variables["BUILD_SSE_SERVER"] = self.options.build_sse
         tc.generate()
+
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)

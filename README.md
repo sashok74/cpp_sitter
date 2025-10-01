@@ -1,4 +1,4 @@
-# cpp-treesitter-mcp
+# tree-sitter-mcp
 
 A high-performance MCP (Model Context Protocol) server written in C++20 that provides deep C++ code analysis capabilities using tree-sitter. Designed to integrate seamlessly with Claude Code CLI as a specialized sub-agent for static code analysis.
 
@@ -29,8 +29,8 @@ A high-performance MCP (Model Context Protocol) server written in C++20 that pro
 
 ```bash
 # Clone and build
-git clone https://github.com/yourusername/cpp-treesitter-mcp.git
-cd cpp-treesitter-mcp
+git clone https://github.com/yourusername/tree-sitter-mcp.git
+cd tree-sitter-mcp
 
 # Setup Conan profile (first time only)
 conan profile detect --force
@@ -50,7 +50,7 @@ ctest --output-on-failure
 sudo cmake --install .
 
 # Configure Claude Code integration
-bash /usr/local/share/cpp-treesitter-mcp/install_claude_agent.sh
+bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 ```
 
 ### Quick Test
@@ -319,7 +319,7 @@ cmake --build . --target coverage
 ### Project Structure
 
 ```
-cpp-treesitter-mcp/
+tree-sitter-mcp/
 ├── src/
 │   ├── core/              # Tree-sitter parsing layer
 │   ├── mcp/               # MCP protocol implementation
@@ -365,7 +365,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | mcp_stdio_se
 cat ~/.config/claude/claude_desktop_config.json
 
 # Re-run install script
-bash /usr/local/share/cpp-treesitter-mcp/install_claude_agent.sh
+bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 ```
 
 ### Build errors

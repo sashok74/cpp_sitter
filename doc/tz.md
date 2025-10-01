@@ -2,7 +2,7 @@
 
 ## 📋 Метаинформация
 
-**Проект:** cpp-treesitter-mcp  
+**Проект:** tree-sitter-mcp  
 **Язык:** C++20  
 **Исполнитель:** Claude Code Sonnet 4.5  
 **Система сборки:** CMake 3.20+  
@@ -31,7 +31,7 @@
 ## 📐 Архитектура системы
 
 ```
-cpp-treesitter-mcp/
+tree-sitter-mcp/
 ├── src/
 │   ├── core/                    # Ядро работы с tree-sitter
 │   │   ├── TreeSitterParser.hpp
@@ -141,8 +141,8 @@ cpp-treesitter-mcp/
 
 **Команды:**
 ```bash
-mkdir -p cpp-treesitter-mcp/{src/{core,mcp,tools},tests/{core,mcp,tools,integration,fixtures},claude/agents,cmake,scripts}
-cd cpp-treesitter-mcp
+mkdir -p tree-sitter-mcp/{src/{core,mcp,tools},tests/{core,mcp,tools,integration,fixtures},claude/agents,cmake,scripts}
+cd tree-sitter-mcp
 git init
 ```
 
@@ -181,7 +181,7 @@ Testing/
 **Файл: `CMakeLists.txt`**
 ```cmake
 cmake_minimum_required(VERSION 3.20)
-project(cpp-treesitter-mcp VERSION 1.0.0 LANGUAGES CXX)
+project(tree-sitter-mcp VERSION 1.0.0 LANGUAGES CXX)
 
 # C++20 обязателен
 set(CMAKE_CXX_STANDARD 20)
@@ -241,7 +241,7 @@ if(BUILD_SSE_SERVER)
 endif()
 
 install(DIRECTORY claude/
-    DESTINATION share/cpp-treesitter-mcp/claude
+    DESTINATION share/tree-sitter-mcp/claude
 )
 
 # Configure installation script
@@ -264,7 +264,7 @@ from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
 
 class CppTreesitterMcpConan(ConanFile):
-    name = "cpp-treesitter-mcp"
+    name = "tree-sitter-mcp"
     version = "1.0.0"
     
     # Metadata
@@ -892,7 +892,7 @@ You:
 #!/bin/bash
 set -e
 
-echo "Quick install cpp-treesitter-mcp..."
+echo "Quick install tree-sitter-mcp..."
 
 # Install dependencies
 conan profile detect --force
@@ -981,7 +981,7 @@ claude @ts-strategist "analyze src/core/TreeSitterParser.cpp"
 
 **Файл: `Doxyfile`**
 ```
-PROJECT_NAME = "cpp-treesitter-mcp"
+PROJECT_NAME = "tree-sitter-mcp"
 INPUT = src/
 RECURSIVE = YES
 GENERATE_HTML = YES

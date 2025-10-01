@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(cpp-treesitter-mcp VERSION 1.0.0 LANGUAGES C CXX)
+project(tree-sitter-mcp VERSION 1.0.0 LANGUAGES C CXX)
 
 # C++20 required
 set(CMAKE_CXX_STANDARD 20)
@@ -120,7 +120,7 @@ configure_file(
 
 # Install scripts
 install(PROGRAMS ${CMAKE_BINARY_DIR}/scripts/install_claude_agent.sh
-    DESTINATION share/cpp-treesitter-mcp
+    DESTINATION share/tree-sitter-mcp
 )
 
 # Installation (will be enabled after targets are created)
@@ -137,7 +137,7 @@ install(PROGRAMS ${CMAKE_BINARY_DIR}/scripts/install_claude_agent.sh
 # endif()
 #
 # install(DIRECTORY claude/
-#     DESTINATION share/cpp-treesitter-mcp/claude
+#     DESTINATION share/tree-sitter-mcp/claude
 # )
 #
 # # Configure installation script

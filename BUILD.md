@@ -1,6 +1,6 @@
-# Building cpp-treesitter-mcp
+# Building tree-sitter-mcp
 
-Detailed instructions for building the cpp-treesitter-mcp project from source.
+Detailed instructions for building the tree-sitter-mcp project from source.
 
 ## Prerequisites
 
@@ -58,8 +58,8 @@ pip install conan
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/cpp-treesitter-mcp.git
-cd cpp-treesitter-mcp
+git clone https://github.com/yourusername/tree-sitter-mcp.git
+cd tree-sitter-mcp
 ```
 
 ### 2. Detect Conan Profile (First Time Only)
@@ -140,12 +140,12 @@ bash ../tests/integration/test_claude_integration.sh
 sudo cmake --install .
 
 # Custom prefix
-cmake --install . --prefix=/opt/cpp-treesitter-mcp
+cmake --install . --prefix=/opt/tree-sitter-mcp
 ```
 
 **Installed files**:
 - `/usr/local/bin/mcp_stdio_server` (or custom prefix)
-- `/usr/local/share/cpp-treesitter-mcp/install_claude_agent.sh`
+- `/usr/local/share/tree-sitter-mcp/install_claude_agent.sh`
 
 ## CMake Options
 
