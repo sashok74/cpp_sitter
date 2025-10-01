@@ -311,8 +311,7 @@ echo '{
 
 ### Installation Guides
 
-- **[Claude Code CLI Setup](doc/INSTALL_CLAUDE_CLI.md)** - Connect to Claude CLI (`claude @ts-strategist`)
-- **[Claude Code Desktop Setup](doc/INSTALL_CLAUDE_MCP.md)** - Connect to Claude Desktop app
+- **[Claude Code Setup](doc/INSTALL_CLAUDE_CODE.md)** - Connect to Claude Code (recommended)
 - **[Quick Start (Russian)](doc/quick-start-ru.md)** - Полный гайд на русском языке
 - **[Build Instructions](BUILD.md)** - Detailed build, CMake options, troubleshooting
 
