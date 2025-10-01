@@ -181,6 +181,72 @@ echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"execute_qu
   mcp_stdio_server --log-level error | python3 -m json.tool
 ```
 
+### Тест 6: Массив файлов (Batch обработка)
+
+```bash
+# Создайте дополнительные тестовые файлы
+cat > /tmp/test_a.cpp << 'EOF'
+class Alpha { void methodA(); };
+EOF
+
+cat > /tmp/test_b.cpp << 'EOF'
+class Beta { void methodB(); };
+EOF
+
+# Проанализируйте несколько файлов одновременно
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":["/tmp/test_a.cpp","/tmp/test_b.cpp"]}}}' | \
+  mcp_stdio_server --log-level error | python3 -m json.tool
+```
+
+**Ожидаемый результат:**
+```json
+{
+  "success": true,
+  "total_files": 2,
+  "processed_files": 2,
+  "failed_files": 0,
+  "results": [
+    {"filepath": "/tmp/test_a.cpp", "class_count": 1, ...},
+    {"filepath": "/tmp/test_b.cpp", "class_count": 1, ...}
+  ]
+}
+```
+
+### Тест 7: Рекурсивное сканирование директории
+
+```bash
+# Создайте структуру директорий
+mkdir -p /tmp/test_project/subdir
+cat > /tmp/test_project/main.cpp << 'EOF'
+class Main { void run(); };
+EOF
+
+cat > /tmp/test_project/subdir/utils.cpp << 'EOF'
+class Utils { void helper(); };
+EOF
+
+# Просканируйте всю директорию рекурсивно
+echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"/tmp/test_project","recursive":true}}}' | \
+  mcp_stdio_server --log-level error | python3 -m json.tool
+```
+
+**Ожидаемый результат:** Найдены все классы из всех файлов в директории и поддиректориях.
+
+### Тест 8: Фильтрация по паттернам файлов
+
+```bash
+# Добавьте заголовочный файл
+cat > /tmp/test_project/header.hpp << 'EOF'
+class Header { void declare(); };
+EOF
+
+# Найдите классы только в .hpp файлах
+echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"/tmp/test_project","recursive":true,"file_patterns":["*.hpp"]}}}' | \
+  mcp_stdio_server --log-level error | python3 -m json.tool
+```
+
+**Ожидаемый результат:** Найден только класс `Header` из файла header.hpp, файлы .cpp проигнорированы.
+
 ---
 
 ## 🤖 Проверка в Claude Code
@@ -250,8 +316,8 @@ claude @ts-strategist "analyze /tmp/test.cpp"
 **Ожидаемый ответ:** Подробный анализ файла с указанием количества классов, функций и возможных проблем.
 
 ```bash
-# Тест 3: Поиск классов в директории
-claude @ts-strategist "find all classes in /home/raa/projects/cpp-sitter/src/core/"
+# Тест 3: Поиск классов в директории (рекурсивно)
+claude @ts-strategist "find all classes in /home/raa/projects/cpp-sitter/src/"
 ```
 
 ```bash
@@ -356,33 +422,71 @@ ctest --output-on-failure --verbose
 ./tests/core/core_tests --gtest_filter="TreeSitterParserTest.*"
 ```
 
+### Проблема 6: "No C++ files found" при сканировании директории
+
+**Причины и решения:**
+- **Директория пуста**: проверьте наличие файлов
+- **Неверные паттерны**: убедитесь, что file_patterns соответствуют вашим файлам
+- **Рекурсия отключена**: установите `"recursive": true`
+
+```bash
+# Проверьте файлы в директории
+ls -R /path/to/directory/*.cpp
+
+# Попробуйте с явным указанием паттернов
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"/path/to/directory","recursive":true,"file_patterns":["*.cpp","*.hpp","*.h"]}}}' | \
+  mcp_stdio_server --log-level debug
+```
+
+### Проблема 7: Batch обработка слишком медленная
+
+**Оптимизация:**
+- Используйте file_patterns для фильтрации только нужных файлов
+- Отключите рекурсию если она не нужна: `"recursive": false`
+- Кэширование работает автоматически при повторных запросах
+
+```bash
+# Оптимизированный запрос - только .hpp в корневой директории
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"src/","recursive":false,"file_patterns":["*.hpp"]}}}' | \
+  mcp_stdio_server --log-level error
+```
+
 ---
 
 ## 📚 Дополнительные примеры использования
 
-### Пример 1: Анализ проекта
+### Пример 1: Анализ всего проекта (Batch mode)
 
 ```bash
-# Найти все классы в проекте
-find /home/raa/projects/cpp-sitter/src -name "*.hpp" -o -name "*.cpp" | while read file; do
-    echo "Analyzing: $file"
-    claude @ts-strategist "find classes in $file"
-done
+# Анализ всей директории src/ одним запросом (быстрее чем по файлу)
+claude @ts-strategist "analyze all files in src/ and show summary"
+
+# Или напрямую через MCP
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"src/","recursive":true}}}' | \
+  mcp_stdio_server --log-level error | python3 -m json.tool
 ```
 
-### Пример 2: Поиск виртуальных методов
+### Пример 2: Анализ нескольких конкретных файлов
+
+```bash
+# Массив путей для точечного анализа
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":["src/core/ASTAnalyzer.cpp","src/mcp/MCPServer.cpp"]}}}' | \
+  mcp_stdio_server --log-level error | python3 -m json.tool
+```
+
+### Пример 3: Поиск виртуальных методов
 
 ```bash
 claude @ts-strategist "find all virtual methods in src/core/"
 ```
 
-### Пример 3: Анализ зависимостей через includes
+### Пример 4: Анализ зависимостей через includes
 
 ```bash
 claude @ts-strategist "show all includes in src/core/TreeSitterParser.cpp"
 ```
 
-### Пример 4: Поиск шаблонных классов
+### Пример 5: Поиск шаблонных классов
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"/tmp/test.cpp","query":"(template_declaration (class_specifier name: (type_identifier) @name))"}}}' | \
@@ -498,9 +602,9 @@ claude @ts-strategist 'execute this query: "(class_specifier name: (type_identif
 
 - [ ] Все зависимости установлены (gcc, cmake, conan)
 - [ ] Проект успешно собран (`cmake --build .`)
-- [ ] Все тесты проходят (`ctest` - 21/21)
+- [ ] Все тесты проходят (`ctest` - 33/33)
 - [ ] Сервер установлен (`which mcp_stdio_server`)
-- [ ] Ручные тесты работают (tools/list возвращает 4 инструмента)
+- [ ] Ручные тесты работают (8 сценариев: single/array/directory/patterns)
 - [ ] Claude Code CLI установлен (`claude --version`)
 - [ ] MCP сервер зарегистрирован в конфигурации Claude
 - [ ] Sub-agent ts-strategist настроен

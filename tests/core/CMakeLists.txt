@@ -4,6 +4,7 @@ add_executable(core_tests
     TreeSitterParser_test.cpp
     QueryEngine_test.cpp
     ASTAnalyzer_test.cpp
+    PathResolver_test.cpp
 )
 
 target_link_libraries(core_tests

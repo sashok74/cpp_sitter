@@ -182,3 +182,125 @@ TEST(ASTAnalyzerTest, FileNotFound) {
     EXPECT_FALSE(result["error"].get<std::string>().empty())
         << "Error message should not be empty";
 }
+
+// Test 7: AnalyzeMultipleFiles - batch analyze multiple files
+TEST(ASTAnalyzerTest, AnalyzeMultipleFiles) {
+    ASTAnalyzer analyzer;
+    std::vector<std::filesystem::path> files = {
+        "../fixtures/simple_class.cpp",
+        "../fixtures/template_class.cpp"
+    };
+
+    for (const auto& file : files) {
+        ASSERT_TRUE(std::filesystem::exists(file))
+            << "Fixture file should exist: " << file;
+    }
+
+    json result = analyzer.analyze_files(files);
+
+    // Check aggregated response structure
+    ASSERT_TRUE(result.contains("success"));
+    EXPECT_TRUE(result["success"].get<bool>());
+
+    ASSERT_TRUE(result.contains("total_files"));
+    EXPECT_EQ(result["total_files"].get<int>(), 2);
+
+    ASSERT_TRUE(result.contains("processed_files"));
+    EXPECT_EQ(result["processed_files"].get<int>(), 2);
+
+    ASSERT_TRUE(result.contains("failed_files"));
+    EXPECT_EQ(result["failed_files"].get<int>(), 0);
+
+    // Check results array
+    ASSERT_TRUE(result.contains("results"));
+    ASSERT_TRUE(result["results"].is_array());
+    EXPECT_EQ(result["results"].size(), 2u);
+
+    // Verify each result has expected structure
+    for (const auto& file_result : result["results"]) {
+        EXPECT_TRUE(file_result.contains("success"));
+        EXPECT_TRUE(file_result.contains("filepath"));
+        EXPECT_TRUE(file_result.contains("class_count"));
+        EXPECT_TRUE(file_result.contains("function_count"));
+    }
+}
+
+// Test 8: FindClassesInMultipleFiles - batch find classes
+TEST(ASTAnalyzerTest, FindClassesInMultipleFiles) {
+    ASTAnalyzer analyzer;
+    std::vector<std::filesystem::path> files = {
+        "../fixtures/simple_class.cpp",
+        "../fixtures/template_class.cpp"
+    };
+
+    json result = analyzer.find_classes_in_files(files);
+
+    // Check aggregated response
+    ASSERT_TRUE(result.contains("success"));
+    EXPECT_TRUE(result["success"].get<bool>());
+
+    ASSERT_TRUE(result.contains("total_files"));
+    EXPECT_EQ(result["total_files"].get<int>(), 2);
+
+    ASSERT_TRUE(result.contains("results"));
+    ASSERT_TRUE(result["results"].is_array());
+    EXPECT_EQ(result["results"].size(), 2u);
+
+    // Verify each result has classes array
+    for (const auto& file_result : result["results"]) {
+        EXPECT_TRUE(file_result.contains("success"));
+        EXPECT_TRUE(file_result.contains("classes"));
+        EXPECT_TRUE(file_result["classes"].is_array());
+    }
+}
+
+// Test 9: FindFunctionsInMultipleFiles - batch find functions
+TEST(ASTAnalyzerTest, FindFunctionsInMultipleFiles) {
+    ASTAnalyzer analyzer;
+    std::vector<std::filesystem::path> files = {
+        "../fixtures/simple_class.cpp",
+        "../fixtures/template_class.cpp"
+    };
+
+    json result = analyzer.find_functions_in_files(files);
+
+    // Check aggregated response
+    ASSERT_TRUE(result.contains("success"));
+    EXPECT_TRUE(result["success"].get<bool>());
+
+    ASSERT_TRUE(result.contains("results"));
+    ASSERT_TRUE(result["results"].is_array());
+
+    // Verify each result has functions array
+    for (const auto& file_result : result["results"]) {
+        EXPECT_TRUE(file_result.contains("success"));
+        EXPECT_TRUE(file_result.contains("functions"));
+        EXPECT_TRUE(file_result["functions"].is_array());
+    }
+}
+
+// Test 10: ExecuteQueryOnMultipleFiles - batch execute custom query
+TEST(ASTAnalyzerTest, ExecuteQueryOnMultipleFiles) {
+    ASTAnalyzer analyzer;
+    std::vector<std::filesystem::path> files = {
+        "../fixtures/simple_class.cpp",
+        "../fixtures/template_class.cpp"
+    };
+
+    std::string query = "(class_specifier) @class";
+    json result = analyzer.execute_query_on_files(files, query);
+
+    // Check aggregated response
+    ASSERT_TRUE(result.contains("success"));
+    EXPECT_TRUE(result["success"].get<bool>());
+
+    ASSERT_TRUE(result.contains("results"));
+    ASSERT_TRUE(result["results"].is_array());
+
+    // Verify each result has matches array
+    for (const auto& file_result : result["results"]) {
+        EXPECT_TRUE(file_result.contains("success"));
+        EXPECT_TRUE(file_result.contains("matches"));
+        EXPECT_TRUE(file_result["matches"].is_array());
+    }
+}

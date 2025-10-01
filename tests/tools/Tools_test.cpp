@@ -151,3 +151,167 @@ TEST_F(ToolsTest, ToolInfoSchemas) {
     auto execute_query_info = ExecuteQueryTool::get_info();
     EXPECT_EQ(execute_query_info.name, "execute_query");
 }
+
+// NEW TESTS: Batch operations with multiple files
+
+TEST_F(ToolsTest, ParseFileTool_MultipleFiles) {
+    ParseFileTool tool(analyzer);
+
+    fs::path file1 = fixtures_dir / "simple_class.cpp";
+    fs::path file2 = fixtures_dir / "template_class.cpp";
+
+    json args = {
+        {"filepath", json::array({file1.string(), file2.string()})}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error")) << "Should not have error: " << result.dump();
+    EXPECT_EQ(result["success"], true);
+    EXPECT_EQ(result["total_files"], 2);
+    EXPECT_EQ(result["processed_files"], 2);
+    EXPECT_EQ(result["failed_files"], 0);
+
+    EXPECT_TRUE(result.contains("results"));
+    EXPECT_TRUE(result["results"].is_array());
+    EXPECT_EQ(result["results"].size(), 2);
+}
+
+TEST_F(ToolsTest, ParseFileTool_DirectoryRecursive) {
+    ParseFileTool tool(analyzer);
+
+    json args = {
+        {"filepath", fixtures_dir.string()},
+        {"recursive", true}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error")) << "Should not have error: " << result.dump();
+    // Should find multiple .cpp files in fixtures
+    EXPECT_GT(result["total_files"].get<int>(), 1);
+}
+
+TEST_F(ToolsTest, FindClassesTool_MultipleFiles) {
+    FindClassesTool tool(analyzer);
+
+    fs::path file1 = fixtures_dir / "simple_class.cpp";
+    fs::path file2 = fixtures_dir / "template_class.cpp";
+
+    json args = {
+        {"filepath", json::array({file1.string(), file2.string()})}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error"));
+    EXPECT_EQ(result["success"], true);
+    EXPECT_EQ(result["total_files"], 2);
+
+    EXPECT_TRUE(result.contains("results"));
+    EXPECT_TRUE(result["results"].is_array());
+    EXPECT_EQ(result["results"].size(), 2);
+
+    // Each result should have classes array
+    for (const auto& file_result : result["results"]) {
+        EXPECT_TRUE(file_result.contains("classes"));
+        EXPECT_TRUE(file_result["classes"].is_array());
+    }
+}
+
+TEST_F(ToolsTest, FindClassesTool_DirectoryRecursive) {
+    FindClassesTool tool(analyzer);
+
+    json args = {
+        {"filepath", fixtures_dir.string()},
+        {"recursive", false},  // Non-recursive
+        {"file_patterns", json::array({"*.cpp"})}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error"));
+    EXPECT_GT(result["total_files"].get<int>(), 0);
+}
+
+TEST_F(ToolsTest, FindFunctionsTool_MultipleFiles) {
+    FindFunctionsTool tool(analyzer);
+
+    fs::path file1 = fixtures_dir / "simple_class.cpp";
+    fs::path file2 = fixtures_dir / "template_class.cpp";
+
+    json args = {
+        {"filepath", json::array({file1.string(), file2.string()})}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error"));
+    EXPECT_EQ(result["success"], true);
+    EXPECT_EQ(result["total_files"], 2);
+
+    EXPECT_TRUE(result.contains("results"));
+    EXPECT_TRUE(result["results"].is_array());
+
+    // Each result should have functions array
+    for (const auto& file_result : result["results"]) {
+        EXPECT_TRUE(file_result.contains("functions"));
+        EXPECT_TRUE(file_result["functions"].is_array());
+    }
+}
+
+TEST_F(ToolsTest, FindFunctionsTool_DirectoryRecursive) {
+    FindFunctionsTool tool(analyzer);
+
+    json args = {
+        {"filepath", fixtures_dir.string()},
+        {"recursive", true}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error"));
+    EXPECT_GT(result["total_files"].get<int>(), 0);
+}
+
+TEST_F(ToolsTest, ExecuteQueryTool_MultipleFiles) {
+    ExecuteQueryTool tool(analyzer);
+
+    fs::path file1 = fixtures_dir / "simple_class.cpp";
+    fs::path file2 = fixtures_dir / "template_class.cpp";
+
+    json args = {
+        {"filepath", json::array({file1.string(), file2.string()})},
+        {"query", "(class_specifier) @class"}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error"));
+    EXPECT_EQ(result["success"], true);
+    EXPECT_EQ(result["total_files"], 2);
+
+    EXPECT_TRUE(result.contains("results"));
+    EXPECT_TRUE(result["results"].is_array());
+
+    // Each result should have matches array
+    for (const auto& file_result : result["results"]) {
+        EXPECT_TRUE(file_result.contains("matches"));
+        EXPECT_TRUE(file_result["matches"].is_array());
+    }
+}
+
+TEST_F(ToolsTest, ExecuteQueryTool_DirectoryRecursive) {
+    ExecuteQueryTool tool(analyzer);
+
+    json args = {
+        {"filepath", fixtures_dir.string()},
+        {"query", "(function_definition) @func"},
+        {"recursive", true}
+    };
+
+    json result = tool.execute(args);
+
+    EXPECT_FALSE(result.contains("error"));
+    EXPECT_GT(result["total_files"].get<int>(), 0);
+}

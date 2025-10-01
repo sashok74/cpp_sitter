@@ -11,9 +11,10 @@ A high-performance MCP (Model Context Protocol) server written in C++20 that pro
   - `find_classes`: Extract all class declarations with locations
   - `find_functions`: Extract all function definitions
   - `execute_query`: Run custom tree-sitter S-expression queries
+- **Batch Processing**: Analyze multiple files or entire directories with recursive scanning
 - **Smart Caching**: File-level caching with mtime validation for performance
 - **Type-Safe Design**: Modern C++20 with RAII, smart pointers, and strong typing
-- **Comprehensive Testing**: 21 unit/integration tests with 100% pass rate
+- **Comprehensive Testing**: 33 unit/integration tests with 100% pass rate
 
 ## Quick Start
 
@@ -101,8 +102,9 @@ claude @ts-strategist "analyze src/core/TreeSitterParser.cpp"
 
 ### 1. parse_file
 
-Get high-level metadata about a C++ file.
+Get high-level metadata about C++ file(s) or directory.
 
+**Single file:**
 ```json
 {
   "name": "parse_file",
@@ -112,11 +114,40 @@ Get high-level metadata about a C++ file.
 }
 ```
 
-Returns: class count, function count, include count, error status
+**Multiple files:**
+```json
+{
+  "name": "parse_file",
+  "arguments": {
+    "filepath": ["src/main.cpp", "src/utils.cpp"]
+  }
+}
+```
+
+**Directory (recursive):**
+```json
+{
+  "name": "parse_file",
+  "arguments": {
+    "filepath": "src/",
+    "recursive": true,
+    "file_patterns": ["*.cpp", "*.hpp"]
+  }
+}
+```
+
+**Parameters:**
+- `filepath`: String or array of strings (file paths or directories)
+- `recursive`: Boolean, default `true` (scan directories recursively)
+- `file_patterns`: Array of glob patterns, default `["*.cpp", "*.hpp", "*.h", "*.cc", "*.cxx"]`
+
+**Returns:**
+- Single file: `{class_count, function_count, include_count, has_errors, success}`
+- Multiple files: `{total_files, processed_files, failed_files, results: [...]}`
 
 ### 2. find_classes
 
-List all class declarations with line numbers.
+List all class declarations with line numbers. Supports single file, multiple files, or directories.
 
 ```json
 {
@@ -127,11 +158,15 @@ List all class declarations with line numbers.
 }
 ```
 
-Returns: array of {name, line, column}
+**Array/directory support:** Same as `parse_file` (supports arrays, `recursive`, `file_patterns`)
+
+**Returns:**
+- Single file: `{classes: [{name, line, column}, ...], success}`
+- Multiple files: `{total_files, results: [{filepath, classes: [...]}]}`
 
 ### 3. find_functions
 
-List all function definitions with line numbers.
+List all function definitions with line numbers. Supports single file, multiple files, or directories.
 
 ```json
 {
@@ -142,11 +177,15 @@ List all function definitions with line numbers.
 }
 ```
 
-Returns: array of {name, line, column}
+**Array/directory support:** Same as `parse_file` (supports arrays, `recursive`, `file_patterns`)
+
+**Returns:**
+- Single file: `{functions: [{name, line, column}, ...], success}`
+- Multiple files: `{total_files, results: [{filepath, functions: [...]}]}`
 
 ### 4. execute_query
 
-Run custom tree-sitter S-expression query.
+Run custom tree-sitter S-expression query. Supports single file, multiple files, or directories.
 
 ```json
 {
@@ -158,27 +197,34 @@ Run custom tree-sitter S-expression query.
 }
 ```
 
-Returns: array of matches with capture groups
+**Array/directory support:** Same as `parse_file` (supports arrays, `recursive`, `file_patterns`)
+
+**Returns:**
+- Single file: `{matches: [{capture_name, text, line, column}, ...], success}`
+- Multiple files: `{total_files, results: [{filepath, matches: [...]}]}`
 
 ## Usage Examples
 
 ### With Claude Code CLI
 
 ```bash
-# Analyze class structure
+# Analyze single file
 claude @ts-strategist "What classes are defined in src/core/TreeSitterParser.cpp?"
 
-# Find virtual functions
-claude @ts-strategist "Find all virtual functions in src/"
+# Analyze entire directory (recursive)
+claude @ts-strategist "Find all classes in src/"
 
-# Check for patterns
+# Find virtual functions across multiple files
+claude @ts-strategist "Find all virtual functions in src/core/ and src/mcp/"
+
+# Check for patterns in directory
 claude @ts-strategist "Are there any factory patterns in src/tools/?"
 ```
 
 ### Direct MCP Protocol
 
 ```bash
-# Parse a file
+# Parse single file
 echo '{
   "jsonrpc": "2.0",
   "id": 1,
@@ -186,6 +232,34 @@ echo '{
   "params": {
     "name": "parse_file",
     "arguments": {"filepath": "test.cpp"}
+  }
+}' | mcp_stdio_server --log-level error
+
+# Parse multiple files
+echo '{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "parse_file",
+    "arguments": {
+      "filepath": ["src/a.cpp", "src/b.cpp"]
+    }
+  }
+}' | mcp_stdio_server --log-level error
+
+# Scan directory recursively
+echo '{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "find_classes",
+    "arguments": {
+      "filepath": "src/",
+      "recursive": true,
+      "file_patterns": ["*.hpp"]
+    }
   }
 }' | mcp_stdio_server --log-level error
 ```

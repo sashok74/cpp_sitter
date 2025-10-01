@@ -72,6 +72,38 @@ public:
     json execute_query(const std::filesystem::path& filepath, std::string_view query_string);
 
     /**
+     * @brief Analyze multiple C++ files and return aggregated metadata
+     * @param filepaths Vector of file paths to analyze
+     * @return JSON object with total_files, processed_files, failed_files, and results array
+     */
+    json analyze_files(const std::vector<std::filesystem::path>& filepaths);
+
+    /**
+     * @brief Find all class declarations in multiple files
+     * @param filepaths Vector of file paths
+     * @return JSON object with aggregated results
+     */
+    json find_classes_in_files(const std::vector<std::filesystem::path>& filepaths);
+
+    /**
+     * @brief Find all function definitions in multiple files
+     * @param filepaths Vector of file paths
+     * @return JSON object with aggregated results
+     */
+    json find_functions_in_files(const std::vector<std::filesystem::path>& filepaths);
+
+    /**
+     * @brief Execute a custom query on multiple files
+     * @param filepaths Vector of file paths
+     * @param query_string S-expression query string
+     * @return JSON object with aggregated results
+     */
+    json execute_query_on_files(
+        const std::vector<std::filesystem::path>& filepaths,
+        std::string_view query_string
+    );
+
+    /**
      * @brief Clear the file cache
      */
     void clear_cache();

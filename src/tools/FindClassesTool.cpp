@@ -1,4 +1,5 @@
 #include "FindClassesTool.hpp"
+#include "core/PathResolver.hpp"
 #include <spdlog/spdlog.h>
 
 namespace ts_mcp {
@@ -13,13 +14,26 @@ FindClassesTool::FindClassesTool(std::shared_ptr<ASTAnalyzer> analyzer)
 ToolInfo FindClassesTool::get_info() {
     return {
         "find_classes",
-        "Find all class declarations in a C++ file with their names and line numbers",
+        "Find all class declarations in C++ file(s) with their names and line numbers",
         {
             {"type", "object"},
             {"properties", {
                 {"filepath", {
-                    {"type", "string"},
-                    {"description", "Absolute or relative path to the C++ file to analyze"}
+                    {"oneOf", json::array({
+                        {{"type", "string"}, {"description", "Single file or directory path"}},
+                        {{"type", "array"}, {"items", {{"type", "string"}}}, {"description", "Multiple file or directory paths"}}
+                    })}
+                }},
+                {"recursive", {
+                    {"type", "boolean"},
+                    {"default", true},
+                    {"description", "Recursively scan directories for C++ files"}
+                }},
+                {"file_patterns", {
+                    {"type", "array"},
+                    {"items", {{"type", "string"}}},
+                    {"default", json::array({"*.cpp", "*.hpp", "*.h", "*.cc", "*.cxx"})},
+                    {"description", "File patterns to include (glob patterns)"}
                 }}
             }},
             {"required", json::array({"filepath"})}
@@ -34,16 +48,50 @@ json FindClassesTool::execute(const json& args) {
         };
     }
 
-    std::string filepath = args["filepath"];
-    spdlog::debug("FindClassesTool: analyzing file: {}", filepath);
+    // Extract parameters
+    bool recursive = args.value("recursive", true);
+    std::vector<std::string> patterns = args.value("file_patterns",
+        std::vector<std::string>{"*.cpp", "*.hpp", "*.h", "*.cc", "*.cxx"});
+
+    // Determine filepath type and collect paths
+    std::vector<std::string> input_paths;
+    if (args["filepath"].is_string()) {
+        input_paths.push_back(args["filepath"].get<std::string>());
+    } else if (args["filepath"].is_array()) {
+        input_paths = args["filepath"].get<std::vector<std::string>>();
+    } else {
+        return {
+            {"error", "filepath must be a string or array of strings"}
+        };
+    }
+
+    spdlog::debug("FindClassesTool: resolving {} paths", input_paths.size());
+
+    // Resolve paths using PathResolver
+    auto resolved_files = PathResolver::resolve_paths(input_paths, recursive, patterns);
+
+    if (resolved_files.empty()) {
+        return {
+            {"error", "No C++ files found at specified path(s)"},
+            {"success", false}
+        };
+    }
+
+    spdlog::debug("FindClassesTool: analyzing {} files", resolved_files.size());
 
     try {
-        auto result = analyzer_->find_classes(filepath);
-        return result;
+        // For single file - return old format for backward compatibility
+        if (resolved_files.size() == 1) {
+            return analyzer_->find_classes(resolved_files[0]);
+        }
+
+        // For multiple files - return batch format
+        return analyzer_->find_classes_in_files(resolved_files);
     } catch (const std::exception& e) {
         spdlog::error("FindClassesTool error: {}", e.what());
         return {
-            {"error", e.what()}
+            {"error", e.what()},
+            {"success", false}
         };
     }
 }

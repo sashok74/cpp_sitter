@@ -4,6 +4,7 @@ add_library(ts_mcp_core STATIC
     TreeSitterParser.cpp
     QueryEngine.cpp
     ASTAnalyzer.cpp
+    PathResolver.cpp
 )
 
 target_include_directories(ts_mcp_core

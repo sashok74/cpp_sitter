@@ -179,6 +179,141 @@ json ASTAnalyzer::execute_query(const std::filesystem::path& filepath, std::stri
     return result;
 }
 
+json ASTAnalyzer::analyze_files(const std::vector<std::filesystem::path>& filepaths) {
+    json results = json::array();
+    int total = filepaths.size();
+    int failed = 0;
+
+    for (const auto& file : filepaths) {
+        try {
+            auto result = analyze_file(file);
+            result["filepath"] = file.string();
+            if (!result.value("success", false)) {
+                failed++;
+            }
+            results.push_back(result);
+        } catch (const std::exception& e) {
+            results.push_back({
+                {"filepath", file.string()},
+                {"error", e.what()},
+                {"success", false}
+            });
+            failed++;
+        }
+    }
+
+    // Aggregated response
+    return {
+        {"success", failed == 0},
+        {"total_files", total},
+        {"processed_files", total - failed},
+        {"failed_files", failed},
+        {"results", results}
+    };
+}
+
+json ASTAnalyzer::find_classes_in_files(const std::vector<std::filesystem::path>& filepaths) {
+    json results = json::array();
+    int total = filepaths.size();
+    int failed = 0;
+
+    for (const auto& file : filepaths) {
+        try {
+            auto result = find_classes(file);
+            result["filepath"] = file.string();
+            if (!result.value("success", false)) {
+                failed++;
+            }
+            results.push_back(result);
+        } catch (const std::exception& e) {
+            results.push_back({
+                {"filepath", file.string()},
+                {"error", e.what()},
+                {"success", false}
+            });
+            failed++;
+        }
+    }
+
+    // Aggregated response
+    return {
+        {"success", failed == 0},
+        {"total_files", total},
+        {"processed_files", total - failed},
+        {"failed_files", failed},
+        {"results", results}
+    };
+}
+
+json ASTAnalyzer::find_functions_in_files(const std::vector<std::filesystem::path>& filepaths) {
+    json results = json::array();
+    int total = filepaths.size();
+    int failed = 0;
+
+    for (const auto& file : filepaths) {
+        try {
+            auto result = find_functions(file);
+            result["filepath"] = file.string();
+            if (!result.value("success", false)) {
+                failed++;
+            }
+            results.push_back(result);
+        } catch (const std::exception& e) {
+            results.push_back({
+                {"filepath", file.string()},
+                {"error", e.what()},
+                {"success", false}
+            });
+            failed++;
+        }
+    }
+
+    // Aggregated response
+    return {
+        {"success", failed == 0},
+        {"total_files", total},
+        {"processed_files", total - failed},
+        {"failed_files", failed},
+        {"results", results}
+    };
+}
+
+json ASTAnalyzer::execute_query_on_files(
+    const std::vector<std::filesystem::path>& filepaths,
+    std::string_view query_string
+) {
+    json results = json::array();
+    int total = filepaths.size();
+    int failed = 0;
+
+    for (const auto& file : filepaths) {
+        try {
+            auto result = execute_query(file, query_string);
+            result["filepath"] = file.string();
+            if (!result.value("success", false)) {
+                failed++;
+            }
+            results.push_back(result);
+        } catch (const std::exception& e) {
+            results.push_back({
+                {"filepath", file.string()},
+                {"error", e.what()},
+                {"success", false}
+            });
+            failed++;
+        }
+    }
+
+    // Aggregated response
+    return {
+        {"success", failed == 0},
+        {"total_files", total},
+        {"processed_files", total - failed},
+        {"failed_files", failed},
+        {"results", results}
+    };
+}
+
 void ASTAnalyzer::clear_cache() {
     cache_.clear();
     spdlog::debug("Cache cleared");
