@@ -318,6 +318,7 @@ echo '{
 ### API Documentation
 
 - **[MCP API Reference](doc/MCP_API_REFERENCE.md)** - Complete API with request/response examples
+- **[MCP Server Architecture](doc/MCP_SERVER_ARCHITECTURE.md)** - Guide for building your own MCP server
 - **[Technical Specification](doc/tz.md)** - Architecture and implementation details
 
 ## Building from Source
