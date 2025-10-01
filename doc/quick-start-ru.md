@@ -2,7 +2,7 @@
 
 ## Описание
 
-**tree-sitter-mcp** - это высокопроизводительный MCP (Model Context Protocol) сервер на C++20 для глубокого анализа C++ кода с использованием tree-sitter. Интегрируется с Claude Code CLI для интеллектуального анализа исходного кода.
+**tree-sitter-mcp** - это высокопроизводительный MCP (Model Context Protocol) сервер на C++20 для глубокого анализа C++ и Python кода с использованием tree-sitter. Поддерживает автоматическое определение языка и интегрируется с Claude Code CLI для интеллектуального анализа исходного кода.
 
 ---
 
@@ -149,7 +149,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"parse_file
     "result": {
         "content": [
             {
-                "text": "{\"class_count\":1,\"filepath\":\"/tmp/test.cpp\",\"function_count\":3,\"has_errors\":false,\"include_count\":1,\"success\":true}",
+                "text": "{\"class_count\":1,\"filepath\":\"/tmp/test.cpp\",\"function_count\":3,\"has_errors\":false,\"include_count\":1,\"language\":\"cpp\",\"success\":true}",
                 "type": "text"
             }
         ]
@@ -247,6 +247,56 @@ echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"find_class
 
 **Ожидаемый результат:** Найден только класс `Header` из файла header.hpp, файлы .cpp проигнорированы.
 
+### Тест 9: Парсинг Python файла
+
+```bash
+# Создайте тестовый Python файл
+cat > /tmp/test.py << 'EOF'
+import asyncio
+
+class Calculator:
+    def add(self, a, b):
+        return a + b
+
+    @staticmethod
+    def multiply(a, b):
+        return a * b
+
+async def fetch_data():
+    await asyncio.sleep(0.1)
+    return "data"
+EOF
+
+# Выполните парсинг
+echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"/tmp/test.py"}}}' | \
+  mcp_stdio_server --log-level error | python3 -m json.tool
+```
+
+**Ожидаемый результат:**
+```json
+{
+    "id": 9,
+    "jsonrpc": "2.0",
+    "result": {
+        "content": [
+            {
+                "text": "{\"class_count\":1,\"function_count\":3,\"include_count\":1,\"has_errors\":false,\"language\":\"python\",\"success\":true}",
+                "type": "text"
+            }
+        ]
+    }
+}
+```
+
+### Тест 10: Поиск декораторов в Python
+
+```bash
+echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"/tmp/test.py","query":"(decorator) @decorator"}}}' | \
+  mcp_stdio_server --log-level error | python3 -m json.tool
+```
+
+**Ожидаемый результат:** Найден декоратор `@staticmethod`.
+
 ---
 
 ## 🤖 Проверка в Claude Code
@@ -321,7 +371,12 @@ claude @ts-strategist "find all classes in /home/raa/projects/cpp-sitter/src/"
 ```
 
 ```bash
-# Тест 4: Выполнение custom query
+# Тест 4: Анализ Python файла
+claude @ts-strategist "analyze /tmp/test.py"
+```
+
+```bash
+# Тест 5: Выполнение custom query
 claude @ts-strategist "execute query to find all virtual functions in /tmp/test.cpp"
 ```
 
@@ -333,9 +388,11 @@ claude @ts-strategist "execute query to find all virtual functions in /tmp/test.
 4. Claude должен ответить описанием доступных возможностей
 
 **Примеры запросов:**
-- `@ts-strategist analyze src/main.cpp`
+- `@ts-strategist analyze src/main.cpp` (C++)
+- `@ts-strategist analyze tests/fixtures/simple_class.py` (Python)
 - `@ts-strategist find all classes in src/`
-- `@ts-strategist show me all virtual methods`
+- `@ts-strategist show me all virtual methods` (C++)
+- `@ts-strategist find all async functions in tests/fixtures/` (Python)
 - `@ts-strategist what includes are used in this file: src/core/TreeSitterParser.hpp`
 
 ---
@@ -501,6 +558,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"execute_qu
 
 Tree-sitter использует S-expression запросы:
 
+**C++ запросы:**
 ```scheme
 ; Найти все классы
 (class_specifier
@@ -529,10 +587,37 @@ Tree-sitter использует S-expression запросы:
     name: (type_identifier) @template_class))
 ```
 
+**Python запросы:**
+```scheme
+; Найти все классы
+(class_definition
+  name: (identifier) @class_name)
+
+; Найти все функции
+(function_definition
+  name: (identifier) @func_name)
+
+; Найти async функции
+(function_definition
+  "async" @async_keyword
+  name: (identifier) @async_func_name)
+
+; Найти декораторы
+(decorator) @decorator
+
+; Найти import директивы
+[(import_statement) @import
+ (import_from_statement) @import_from]
+```
+
 ### Использование в Claude Code
 
 ```bash
+# C++ query
 claude @ts-strategist 'execute this query: "(class_specifier name: (type_identifier) @name)" on file src/core/ASTAnalyzer.hpp'
+
+# Python query
+claude @ts-strategist 'execute this query: "(decorator) @decorator" on file tests/fixtures/with_decorators.py'
 ```
 
 ---
@@ -575,9 +660,10 @@ claude @ts-strategist 'execute this query: "(class_specifier name: (type_identif
 ### Документация
 
 - **Основная документация**: `/home/raa/projects/cpp-sitter/README.md`
+- **MCP API Reference**: `/home/raa/projects/cpp-sitter/doc/MCP_API_REFERENCE.md`
 - **Инструкции по сборке**: `/home/raa/projects/cpp-sitter/BUILD.md`
 - **Техническая спецификация**: `/home/raa/projects/cpp-sitter/doc/tz.md`
-- **Контекст для Claude**: `/home/raa/projects/cpp-sitter/claude/CLAUDE.md`
+- **Контекст для Claude**: `/home/raa/projects/cpp-sitter/CLAUDE.md`
 
 ### Полезные ссылки
 
@@ -602,9 +688,9 @@ claude @ts-strategist 'execute this query: "(class_specifier name: (type_identif
 
 - [ ] Все зависимости установлены (gcc, cmake, conan)
 - [ ] Проект успешно собран (`cmake --build .`)
-- [ ] Все тесты проходят (`ctest` - 33/33)
+- [ ] Все тесты проходят (`ctest` - 42/42: 33 C++ + 9 Python)
 - [ ] Сервер установлен (`which mcp_stdio_server`)
-- [ ] Ручные тесты работают (8 сценариев: single/array/directory/patterns)
+- [ ] Ручные тесты работают (10 сценариев: C++/Python/single/array/directory/patterns)
 - [ ] Claude Code CLI установлен (`claude --version`)
 - [ ] MCP сервер зарегистрирован в конфигурации Claude
 - [ ] Sub-agent ts-strategist настроен
