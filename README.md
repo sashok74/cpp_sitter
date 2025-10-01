@@ -319,6 +319,8 @@ echo '{
 
 - **[MCP API Reference](doc/MCP_API_REFERENCE.md)** - Complete API with request/response examples
 - **[MCP Server Architecture](doc/MCP_SERVER_ARCHITECTURE.md)** - Guide for building your own MCP server
+- **[MCP Roadmap](doc/scenary_mcp.md)** - Future features and vision for AI-agent integration
+- **[Roadmap Analysis](doc/ROADMAP_ANALYSIS.md)** - Detailed implementation plan and priorities
 - **[Technical Specification](doc/tz.md)** - Architecture and implementation details
 
 ## Building from Source
