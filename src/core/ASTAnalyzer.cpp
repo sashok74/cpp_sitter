@@ -1,4 +1,5 @@
 #include "core/ASTAnalyzer.hpp"
+#include "core/Language.hpp"
 #include <spdlog/spdlog.h>
 #include <fstream>
 #include <sstream>
@@ -6,79 +7,141 @@
 namespace ts_mcp {
 
 ASTAnalyzer::ASTAnalyzer()
-    : parser_(), query_engine_(), cache_() {
+    : parsers_(), query_engine_(), cache_() {
     spdlog::debug("ASTAnalyzer created");
 }
 
-json ASTAnalyzer::analyze_file(const std::filesystem::path& filepath) {
+TreeSitterParser& ASTAnalyzer::get_parser_for_language(Language lang) {
+    auto it = parsers_.find(lang);
+    if (it != parsers_.end()) {
+        return it->second;
+    }
+
+    // Create new parser for this language
+    spdlog::debug("Creating parser for language: {}", LanguageUtils::to_string(lang));
+    auto [new_it, inserted] = parsers_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(lang),
+        std::forward_as_tuple(lang)
+    );
+
+    return new_it->second;
+}
+
+Language ASTAnalyzer::detect_language(const std::filesystem::path& filepath,
+                                     std::optional<Language> lang_override) const {
+    if (lang_override) {
+        return *lang_override;
+    }
+
+    Language detected = LanguageUtils::detect_from_extension(filepath);
+    if (detected == Language::UNKNOWN) {
+        spdlog::warn("Unknown file extension for {}, defaulting to C++", filepath.string());
+        return Language::CPP;
+    }
+
+    return detected;
+}
+
+json ASTAnalyzer::analyze_file(const std::filesystem::path& filepath, std::optional<Language> lang) {
     json result = {
         {"filepath", filepath.string()},
         {"success", false}
     };
 
-    auto file_data = get_or_parse_file(filepath);
+    Language detected_lang = detect_language(filepath, lang);
+    result["language"] = std::string(LanguageUtils::to_string(detected_lang));
+
+    auto file_data = get_or_parse_file(filepath, detected_lang);
     if (!file_data) {
         result["error"] = "Failed to parse file";
         return result;
     }
 
-    const Tree* tree = file_data->first;
-    std::string_view source = file_data->second;
+    const Tree* tree = std::get<0>(*file_data);
+    std::string_view source = std::get<1>(*file_data);
+    Language actual_lang = std::get<2>(*file_data);
 
     result["success"] = true;
     result["has_errors"] = tree->has_error();
 
     // Count classes
-    auto class_query = query_engine_.compile_query(QueryEngine::PredefinedQueries::ALL_CLASSES);
-    if (class_query) {
-        auto class_matches = query_engine_.execute(*tree, *class_query, source);
-        result["class_count"] = class_matches.size();
+    auto class_query_str = QueryEngine::get_predefined_query(QueryType::CLASSES, actual_lang);
+    if (class_query_str) {
+        auto class_query = query_engine_.compile_query(*class_query_str, actual_lang);
+        if (class_query) {
+            auto class_matches = query_engine_.execute(*tree, *class_query, source);
+            result["class_count"] = class_matches.size();
+        } else {
+            result["class_count"] = 0;
+        }
     } else {
         result["class_count"] = 0;
     }
 
     // Count functions
-    auto func_query = query_engine_.compile_query(QueryEngine::PredefinedQueries::ALL_FUNCTIONS);
-    if (func_query) {
-        auto func_matches = query_engine_.execute(*tree, *func_query, source);
-        result["function_count"] = func_matches.size();
+    auto func_query_str = QueryEngine::get_predefined_query(QueryType::FUNCTIONS, actual_lang);
+    if (func_query_str) {
+        auto func_query = query_engine_.compile_query(*func_query_str, actual_lang);
+        if (func_query) {
+            auto func_matches = query_engine_.execute(*tree, *func_query, source);
+            result["function_count"] = func_matches.size();
+        } else {
+            result["function_count"] = 0;
+        }
     } else {
         result["function_count"] = 0;
     }
 
-    // Count includes
-    auto include_query = query_engine_.compile_query(QueryEngine::PredefinedQueries::INCLUDES);
-    if (include_query) {
-        auto include_matches = query_engine_.execute(*tree, *include_query, source);
-        result["include_count"] = include_matches.size();
+    // Count includes/imports
+    auto include_query_str = QueryEngine::get_predefined_query(QueryType::INCLUDES, actual_lang);
+    if (include_query_str) {
+        auto include_query = query_engine_.compile_query(*include_query_str, actual_lang);
+        if (include_query) {
+            auto include_matches = query_engine_.execute(*tree, *include_query, source);
+            result["include_count"] = include_matches.size();
+        } else {
+            result["include_count"] = 0;
+        }
     } else {
         result["include_count"] = 0;
     }
 
-    spdlog::debug("Analyzed {}: {} classes, {} functions",
+    spdlog::debug("Analyzed {} ({}): {} classes, {} functions",
                  filepath.string(),
+                 LanguageUtils::to_string(actual_lang),
                  result["class_count"].get<int>(),
                  result["function_count"].get<int>());
 
     return result;
 }
 
-json ASTAnalyzer::find_classes(const std::filesystem::path& filepath) {
+json ASTAnalyzer::find_classes(const std::filesystem::path& filepath, std::optional<Language> lang) {
     json result = {
         {"filepath", filepath.string()},
         {"success", false}
     };
 
-    auto file_data = get_or_parse_file(filepath);
+    Language detected_lang = detect_language(filepath, lang);
+    result["language"] = std::string(LanguageUtils::to_string(detected_lang));
+
+    auto file_data = get_or_parse_file(filepath, detected_lang);
     if (!file_data) {
         result["error"] = "Failed to parse file";
         return result;
     }
 
-    const Tree* tree = file_data->first;
-    std::string_view source = file_data->second;
+    const Tree* tree = std::get<0>(*file_data);
+    std::string_view source = std::get<1>(*file_data);
+    Language actual_lang = std::get<2>(*file_data);
 
-    auto query = query_engine_.compile_query(QueryEngine::PredefinedQueries::ALL_CLASSES);
+    auto query_str = QueryEngine::get_predefined_query(QueryType::CLASSES, actual_lang);
+    if (!query_str) {
+        result["error"] = "Classes query not supported for this language";
+        return result;
+    }
+
+    auto query = query_engine_.compile_query(*query_str, actual_lang);
     if (!query) {
         result["error"] = "Failed to compile query";
         return result;
@@ -92,22 +155,32 @@ json ASTAnalyzer::find_classes(const std::filesystem::path& filepath) {
     return result;
 }
 
-json ASTAnalyzer::find_functions(const std::filesystem::path& filepath) {
+json ASTAnalyzer::find_functions(const std::filesystem::path& filepath, std::optional<Language> lang) {
     json result = {
         {"filepath", filepath.string()},
         {"success", false}
     };
 
-    auto file_data = get_or_parse_file(filepath);
+    Language detected_lang = detect_language(filepath, lang);
+    result["language"] = std::string(LanguageUtils::to_string(detected_lang));
+
+    auto file_data = get_or_parse_file(filepath, detected_lang);
     if (!file_data) {
         result["error"] = "Failed to parse file";
         return result;
     }
 
-    const Tree* tree = file_data->first;
-    std::string_view source = file_data->second;
+    const Tree* tree = std::get<0>(*file_data);
+    std::string_view source = std::get<1>(*file_data);
+    Language actual_lang = std::get<2>(*file_data);
 
-    auto query = query_engine_.compile_query(QueryEngine::PredefinedQueries::ALL_FUNCTIONS);
+    auto query_str = QueryEngine::get_predefined_query(QueryType::FUNCTIONS, actual_lang);
+    if (!query_str) {
+        result["error"] = "Functions query not supported for this language";
+        return result;
+    }
+
+    auto query = query_engine_.compile_query(*query_str, actual_lang);
     if (!query) {
         result["error"] = "Failed to compile query";
         return result;
@@ -121,22 +194,32 @@ json ASTAnalyzer::find_functions(const std::filesystem::path& filepath) {
     return result;
 }
 
-json ASTAnalyzer::find_includes(const std::filesystem::path& filepath) {
+json ASTAnalyzer::find_includes(const std::filesystem::path& filepath, std::optional<Language> lang) {
     json result = {
         {"filepath", filepath.string()},
         {"success", false}
     };
 
-    auto file_data = get_or_parse_file(filepath);
+    Language detected_lang = detect_language(filepath, lang);
+    result["language"] = std::string(LanguageUtils::to_string(detected_lang));
+
+    auto file_data = get_or_parse_file(filepath, detected_lang);
     if (!file_data) {
         result["error"] = "Failed to parse file";
         return result;
     }
 
-    const Tree* tree = file_data->first;
-    std::string_view source = file_data->second;
+    const Tree* tree = std::get<0>(*file_data);
+    std::string_view source = std::get<1>(*file_data);
+    Language actual_lang = std::get<2>(*file_data);
 
-    auto query = query_engine_.compile_query(QueryEngine::PredefinedQueries::INCLUDES);
+    auto query_str = QueryEngine::get_predefined_query(QueryType::INCLUDES, actual_lang);
+    if (!query_str) {
+        result["error"] = "Includes query not supported for this language";
+        return result;
+    }
+
+    auto query = query_engine_.compile_query(*query_str, actual_lang);
     if (!query) {
         result["error"] = "Failed to compile query";
         return result;
@@ -150,22 +233,28 @@ json ASTAnalyzer::find_includes(const std::filesystem::path& filepath) {
     return result;
 }
 
-json ASTAnalyzer::execute_query(const std::filesystem::path& filepath, std::string_view query_string) {
+json ASTAnalyzer::execute_query(const std::filesystem::path& filepath,
+                                std::string_view query_string,
+                                std::optional<Language> lang) {
     json result = {
         {"filepath", filepath.string()},
         {"success", false}
     };
 
-    auto file_data = get_or_parse_file(filepath);
+    Language detected_lang = detect_language(filepath, lang);
+    result["language"] = std::string(LanguageUtils::to_string(detected_lang));
+
+    auto file_data = get_or_parse_file(filepath, detected_lang);
     if (!file_data) {
         result["error"] = "Failed to parse file";
         return result;
     }
 
-    const Tree* tree = file_data->first;
-    std::string_view source = file_data->second;
+    const Tree* tree = std::get<0>(*file_data);
+    std::string_view source = std::get<1>(*file_data);
+    Language actual_lang = std::get<2>(*file_data);
 
-    auto query = query_engine_.compile_query(query_string);
+    auto query = query_engine_.compile_query(query_string, actual_lang);
     if (!query) {
         result["error"] = "Failed to compile query";
         return result;
@@ -319,8 +408,9 @@ void ASTAnalyzer::clear_cache() {
     spdlog::debug("Cache cleared");
 }
 
-std::optional<std::pair<const Tree*, std::string_view>> ASTAnalyzer::get_or_parse_file(
-    const std::filesystem::path& filepath
+std::optional<std::tuple<const Tree*, std::string_view, Language>> ASTAnalyzer::get_or_parse_file(
+    const std::filesystem::path& filepath,
+    Language lang
 ) {
     // Check if file exists
     if (!std::filesystem::exists(filepath)) {
@@ -340,9 +430,13 @@ std::optional<std::pair<const Tree*, std::string_view>> ASTAnalyzer::get_or_pars
     // Check cache
     auto it = cache_.find(filepath);
     if (it != cache_.end()) {
-        if (is_cache_valid(filepath, it->second)) {
-            spdlog::debug("Using cached parse for {}", filepath.string());
-            return std::make_pair(it->second.tree.get(), std::string_view(it->second.source));
+        if (is_cache_valid(filepath, it->second, lang)) {
+            spdlog::debug("Using cached parse for {} ({})",
+                         filepath.string(),
+                         LanguageUtils::to_string(lang));
+            return std::make_tuple(it->second.tree.get(),
+                                  std::string_view(it->second.source),
+                                  it->second.language);
         } else {
             spdlog::debug("Cache invalid for {}, re-parsing", filepath.string());
             cache_.erase(it);
@@ -350,7 +444,9 @@ std::optional<std::pair<const Tree*, std::string_view>> ASTAnalyzer::get_or_pars
     }
 
     // Parse file
-    spdlog::debug("Parsing file: {}", filepath.string());
+    spdlog::debug("Parsing file: {} with language {}",
+                 filepath.string(),
+                 LanguageUtils::to_string(lang));
 
     // Read file contents
     std::ifstream file(filepath);
@@ -363,8 +459,11 @@ std::optional<std::pair<const Tree*, std::string_view>> ASTAnalyzer::get_or_pars
     buffer << file.rdbuf();
     std::string source = buffer.str();
 
+    // Get parser for this language
+    TreeSitterParser& parser = get_parser_for_language(lang);
+
     // Parse
-    auto tree = parser_.parse_string(source);
+    auto tree = parser.parse_string(source);
     if (!tree) {
         spdlog::error("Failed to parse file: {}", filepath.string());
         return std::nullopt;
@@ -375,15 +474,29 @@ std::optional<std::pair<const Tree*, std::string_view>> ASTAnalyzer::get_or_pars
     cached.tree = std::move(tree);
     cached.source = std::move(source);
     cached.mtime = mtime;
+    cached.language = lang;
 
     auto [cache_it, inserted] = cache_.emplace(filepath, std::move(cached));
 
-    spdlog::debug("Cached parse for {} (cache size: {})", filepath.string(), cache_.size());
+    spdlog::debug("Cached parse for {} ({}, cache size: {})",
+                 filepath.string(),
+                 LanguageUtils::to_string(lang),
+                 cache_.size());
 
-    return std::make_pair(cache_it->second.tree.get(), std::string_view(cache_it->second.source));
+    return std::make_tuple(cache_it->second.tree.get(),
+                          std::string_view(cache_it->second.source),
+                          cache_it->second.language);
 }
 
-bool ASTAnalyzer::is_cache_valid(const std::filesystem::path& filepath, const CachedFile& cached) const {
+bool ASTAnalyzer::is_cache_valid(const std::filesystem::path& filepath,
+                                 const CachedFile& cached,
+                                 Language lang) const {
+    // Check if language matches
+    if (cached.language != lang) {
+        return false;
+    }
+
+    // Check if file has been modified
     try {
         auto current_mtime = std::filesystem::last_write_time(filepath);
         return current_mtime == cached.mtime;

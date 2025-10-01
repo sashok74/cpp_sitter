@@ -1,10 +1,10 @@
 #include "core/QueryEngine.hpp"
+#include "core/Language.hpp"
 #include <spdlog/spdlog.h>
 
 // Tree-sitter C API
 extern "C" {
     #include <tree_sitter/api.h>
-    TSLanguage* tree_sitter_cpp();
 }
 
 namespace ts_mcp {
@@ -58,8 +58,13 @@ std::string Query::capture_name(uint32_t index) const {
 // QueryEngine implementation
 // ============================================================================
 
-std::unique_ptr<Query> QueryEngine::compile_query(std::string_view query_string) {
-    TSLanguage* language = tree_sitter_cpp();
+std::unique_ptr<Query> QueryEngine::compile_query(std::string_view query_string, Language lang) {
+    const TSLanguage* language = LanguageUtils::get_ts_language(lang);
+    if (!language) {
+        spdlog::error("Unsupported language for query compilation: {}",
+                     LanguageUtils::to_string(lang));
+        return nullptr;
+    }
 
     uint32_t error_offset;
     TSQueryError error_type;
@@ -73,13 +78,13 @@ std::unique_ptr<Query> QueryEngine::compile_query(std::string_view query_string)
     );
 
     if (!raw_query) {
-        spdlog::error("Failed to compile query at offset {}: error type {}",
-                     error_offset, static_cast<int>(error_type));
+        spdlog::error("Failed to compile query for {} at offset {}: error type {}",
+                     LanguageUtils::to_string(lang), error_offset, static_cast<int>(error_type));
         return nullptr;
     }
 
-    spdlog::debug("Query compiled successfully with {} patterns",
-                 ts_query_pattern_count(raw_query));
+    spdlog::debug("Query compiled successfully for {} with {} patterns",
+                 LanguageUtils::to_string(lang), ts_query_pattern_count(raw_query));
 
     return std::make_unique<Query>(raw_query);
 }
@@ -142,6 +147,58 @@ void QueryEngine::get_node_position(TSNode node, uint32_t& line, uint32_t& colum
     TSPoint start_point = ts_node_start_point(node);
     line = start_point.row;
     column = start_point.column;
+}
+
+std::optional<std::string_view> QueryEngine::get_predefined_query(QueryType type, Language lang) {
+    // C++ queries
+    if (lang == Language::CPP) {
+        switch (type) {
+            case QueryType::CLASSES:
+                return "(class_specifier name: (type_identifier) @class_name)";
+            case QueryType::FUNCTIONS:
+                return "(function_definition) @func_def";
+            case QueryType::VIRTUAL_FUNCTIONS:
+                return "["
+                       "  (function_definition"
+                       "    (function_declarator)"
+                       "    [(virtual_specifier) (type_qualifier (virtual_specifier))]"
+                       "  ) @virtual_func"
+                       "]";
+            case QueryType::INCLUDES:
+                return "(preproc_include) @include";
+            case QueryType::NAMESPACES:
+                return "(namespace_definition name: (namespace_identifier) @namespace_name)";
+            case QueryType::STRUCTS:
+                return "(struct_specifier name: (type_identifier) @struct_name)";
+            case QueryType::TEMPLATES:
+                return "(template_declaration) @template_decl";
+            default:
+                return std::nullopt;  // Not supported for C++
+        }
+    }
+
+    // Python queries
+    if (lang == Language::PYTHON) {
+        switch (type) {
+            case QueryType::CLASSES:
+                return "(class_definition name: (identifier) @class_name)";
+            case QueryType::FUNCTIONS:
+                return "(function_definition name: (identifier) @func_name)";
+            case QueryType::INCLUDES:
+                return "["
+                       "  (import_statement) @import"
+                       "  (import_from_statement) @import_from"
+                       "]";
+            case QueryType::DECORATORS:
+                return "(decorator) @decorator";
+            case QueryType::ASYNC_FUNCTIONS:
+                return "(function_definition \"async\" @async_keyword name: (identifier) @async_func_name)";
+            default:
+                return std::nullopt;  // Not supported for Python
+        }
+    }
+
+    return std::nullopt;  // Unknown language
 }
 
 } // namespace ts_mcp

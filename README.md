@@ -1,20 +1,24 @@
 # tree-sitter-mcp
 
-A high-performance MCP (Model Context Protocol) server written in C++20 that provides deep C++ code analysis capabilities using tree-sitter. Designed to integrate seamlessly with Claude Code CLI as a specialized sub-agent for static code analysis.
+A high-performance MCP (Model Context Protocol) server written in C++20 that provides multi-language code analysis (C++ and Python) using tree-sitter. Designed to integrate seamlessly with Claude Code CLI as a specialized sub-agent for static code analysis.
 
 ## Features
 
-- **Tree-sitter Powered Parsing**: Robust C++ code parsing with syntax error detection
+- **Multi-Language Support**: C++ and Python parsing with automatic language detection
+- **Tree-sitter Powered Parsing**: Robust code parsing with syntax error detection
 - **MCP Protocol Support**: JSON-RPC 2.0 over stdio for Claude Code CLI integration
 - **Four Specialized Tools**:
-  - `parse_file`: Get metadata (class/function counts, error status)
+  - `parse_file`: Get metadata (class/function counts, error status, language)
   - `find_classes`: Extract all class declarations with locations
-  - `find_functions`: Extract all function definitions
+  - `find_functions`: Extract all function definitions (including async functions for Python)
   - `execute_query`: Run custom tree-sitter S-expression queries
+- **Language-Specific Queries**:
+  - **C++**: classes, functions, virtual functions, includes, namespaces, structs, templates
+  - **Python**: classes, functions, decorators, async functions, imports
 - **Batch Processing**: Analyze multiple files or entire directories with recursive scanning
 - **Smart Caching**: File-level caching with mtime validation for performance
 - **Type-Safe Design**: Modern C++20 with RAII, smart pointers, and strong typing
-- **Comprehensive Testing**: 33 unit/integration tests with 100% pass rate
+- **Comprehensive Testing**: 42 unit/integration tests with 100% pass rate (33 C++ + 9 Python)
 
 ## Quick Start
 
@@ -59,8 +63,11 @@ bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 # Test the server directly
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | mcp_stdio_server --log-level error
 
-# Test with Claude Code
+# Test with Claude Code (C++)
 claude @ts-strategist "analyze src/core/TreeSitterParser.cpp"
+
+# Test with Claude Code (Python)
+claude @ts-strategist "analyze tests/fixtures/simple_class.py"
 ```
 
 ## Architecture
@@ -102,7 +109,7 @@ claude @ts-strategist "analyze src/core/TreeSitterParser.cpp"
 
 ### 1. parse_file
 
-Get high-level metadata about C++ file(s) or directory.
+Get high-level metadata about C++/Python file(s) or directory.
 
 **Single file:**
 ```json
@@ -119,7 +126,7 @@ Get high-level metadata about C++ file(s) or directory.
 {
   "name": "parse_file",
   "arguments": {
-    "filepath": ["src/main.cpp", "src/utils.cpp"]
+    "filepath": ["src/main.cpp", "src/utils.py"]
   }
 }
 ```
@@ -131,7 +138,7 @@ Get high-level metadata about C++ file(s) or directory.
   "arguments": {
     "filepath": "src/",
     "recursive": true,
-    "file_patterns": ["*.cpp", "*.hpp"]
+    "file_patterns": ["*.cpp", "*.hpp", "*.py"]
   }
 }
 ```
@@ -139,10 +146,10 @@ Get high-level metadata about C++ file(s) or directory.
 **Parameters:**
 - `filepath`: String or array of strings (file paths or directories)
 - `recursive`: Boolean, default `true` (scan directories recursively)
-- `file_patterns`: Array of glob patterns, default `["*.cpp", "*.hpp", "*.h", "*.cc", "*.cxx"]`
+- `file_patterns`: Array of glob patterns, default `["*.cpp", "*.hpp", "*.h", "*.cc", "*.cxx", "*.py"]`
 
 **Returns:**
-- Single file: `{class_count, function_count, include_count, has_errors, success}`
+- Single file: `{class_count, function_count, include_count, has_errors, language, success}`
 - Multiple files: `{total_files, processed_files, failed_files, results: [...]}`
 
 ### 2. find_classes
@@ -208,16 +215,16 @@ Run custom tree-sitter S-expression query. Supports single file, multiple files,
 ### With Claude Code CLI
 
 ```bash
-# Analyze single file
+# Analyze C++ files
 claude @ts-strategist "What classes are defined in src/core/TreeSitterParser.cpp?"
-
-# Analyze entire directory (recursive)
-claude @ts-strategist "Find all classes in src/"
-
-# Find virtual functions across multiple files
 claude @ts-strategist "Find all virtual functions in src/core/ and src/mcp/"
 
-# Check for patterns in directory
+# Analyze Python files
+claude @ts-strategist "Find all async functions in tests/fixtures/async_example.py"
+claude @ts-strategist "What decorators are used in tests/fixtures/with_decorators.py?"
+
+# Mixed language analysis
+claude @ts-strategist "Find all classes in src/ and tests/"
 claude @ts-strategist "Are there any factory patterns in src/tools/?"
 ```
 
@@ -266,6 +273,7 @@ echo '{
 
 ### Tree-sitter Query Examples
 
+**C++ Queries:**
 ```scheme
 # Find all classes
 (class_specifier name: (type_identifier) @class_name)
@@ -281,6 +289,22 @@ echo '{
 
 # Find includes
 (preproc_include path: (_) @include_path)
+```
+
+**Python Queries:**
+```scheme
+# Find all classes
+(class_definition name: (identifier) @class_name)
+
+# Find async functions
+(function_definition "async" @async_keyword name: (identifier) @async_func_name)
+
+# Find decorators
+(decorator) @decorator
+
+# Find imports
+(import_statement) @import
+(import_from_statement) @import_from
 ```
 
 ## Building from Source
@@ -330,7 +354,7 @@ tree-sitter-mcp/
 │   ├── mcp/               # Protocol unit tests
 │   ├── tools/             # Tool unit tests
 │   ├── integration/       # End-to-end tests
-│   └── fixtures/          # Test C++ files
+│   └── fixtures/          # Test C++ and Python files
 ├── claude/
 │   └── agents/            # Sub-agent configurations
 ├── scripts/               # Installation scripts
@@ -388,6 +412,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - [tree-sitter](https://github.com/tree-sitter/tree-sitter) for the parsing engine
 - [tree-sitter-cpp](https://github.com/tree-sitter/tree-sitter-cpp) for C++ grammar
+- [tree-sitter-python](https://github.com/tree-sitter/tree-sitter-python) for Python grammar
 - [Anthropic](https://www.anthropic.com) for the Claude Code platform and MCP protocol
 - [nlohmann/json](https://github.com/nlohmann/json) for JSON handling
 - [gabime/spdlog](https://github.com/gabime/spdlog) for logging

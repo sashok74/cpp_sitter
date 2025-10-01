@@ -1,10 +1,12 @@
 #pragma once
 
 #include "core/TreeSitterParser.hpp"
+#include "core/Language.hpp"
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
+#include <optional>
 
 // Need full tree-sitter API for TSNode in QueryMatch
 extern "C" {
@@ -74,18 +76,35 @@ private:
 };
 
 /**
+ * @brief Types of predefined queries
+ */
+enum class QueryType {
+    CLASSES,           // Find all class declarations
+    FUNCTIONS,         // Find all function definitions
+    VIRTUAL_FUNCTIONS, // Find virtual/override functions (C++ only)
+    INCLUDES,          // Find include/import directives
+    NAMESPACES,        // Find namespace declarations (C++ only)
+    STRUCTS,           // Find struct declarations (C++ only)
+    TEMPLATES,         // Find template declarations (C++ only)
+    DECORATORS,        // Find decorators (Python only)
+    ASYNC_FUNCTIONS    // Find async functions (Python only)
+};
+
+/**
  * @brief Engine for executing tree-sitter queries on syntax trees
  *
- * Provides methods to compile and execute S-expression queries on parsed C++ code.
+ * Provides methods to compile and execute S-expression queries on parsed code.
+ * Supports multiple programming languages with language-specific query patterns.
  */
 class QueryEngine {
 public:
     /**
      * @brief Compile a tree-sitter query from S-expression syntax
      * @param query_string S-expression query string
+     * @param lang Programming language (needed to get correct TSLanguage)
      * @return Unique pointer to compiled query, or nullptr on error
      */
-    std::unique_ptr<Query> compile_query(std::string_view query_string);
+    std::unique_ptr<Query> compile_query(std::string_view query_string, Language lang);
 
     /**
      * @brief Execute a query on a syntax tree
@@ -101,7 +120,16 @@ public:
     );
 
     /**
+     * @brief Get predefined query string for a specific query type and language
+     * @param type Query type
+     * @param lang Programming language
+     * @return Query string if available, empty optional if not supported for this language
+     */
+    static std::optional<std::string_view> get_predefined_query(QueryType type, Language lang);
+
+    /**
      * @brief Predefined queries for common C++ code patterns
+     * @deprecated Use get_predefined_query() with Language parameter instead
      */
     struct PredefinedQueries {
         // Find all class declarations

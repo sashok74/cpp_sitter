@@ -5,6 +5,7 @@ add_executable(core_tests
     QueryEngine_test.cpp
     ASTAnalyzer_test.cpp
     PathResolver_test.cpp
+    Python_test.cpp
 )
 
 target_link_libraries(core_tests

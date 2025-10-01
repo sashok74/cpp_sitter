@@ -48,7 +48,13 @@ FetchContent_Declare(
     GIT_TAG v0.22.0
 )
 
-FetchContent_MakeAvailable(tree-sitter tree-sitter-cpp)
+FetchContent_Declare(
+    tree-sitter-python
+    GIT_REPOSITORY https://github.com/tree-sitter/tree-sitter-python.git
+    GIT_TAG v0.21.0
+)
+
+FetchContent_MakeAvailable(tree-sitter tree-sitter-cpp tree-sitter-python)
 
 # Build tree-sitter library manually (no CMakeLists.txt in upstream)
 file(GLOB TREE_SITTER_SOURCES
@@ -85,9 +91,25 @@ set_target_properties(tree-sitter-cpp PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
+# Build tree-sitter-python grammar
+add_library(tree-sitter-python STATIC
+    ${tree-sitter-python_SOURCE_DIR}/src/parser.c
+    ${tree-sitter-python_SOURCE_DIR}/src/scanner.c
+)
+target_include_directories(tree-sitter-python
+    PUBLIC
+        ${tree-sitter-python_SOURCE_DIR}/src
+)
+target_link_libraries(tree-sitter-python PUBLIC tree-sitter)
+set_target_properties(tree-sitter-python PROPERTIES
+    C_STANDARD 11
+    POSITION_INDEPENDENT_CODE ON
+)
+
 # Create alias for easier linking
 add_library(tree-sitter::tree-sitter ALIAS tree-sitter)
 add_library(tree-sitter::cpp ALIAS tree-sitter-cpp)
+add_library(tree-sitter::python ALIAS tree-sitter-python)
 
 # Compiler warnings
 if(MSVC)

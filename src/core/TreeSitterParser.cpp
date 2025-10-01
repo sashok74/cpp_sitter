@@ -1,4 +1,5 @@
 #include "core/TreeSitterParser.hpp"
+#include "core/Language.hpp"
 #include <spdlog/spdlog.h>
 #include <fstream>
 #include <sstream>
@@ -7,8 +8,6 @@
 // Tree-sitter C API
 extern "C" {
     #include <tree_sitter/api.h>
-    // C++ grammar from tree-sitter-cpp
-    TSLanguage* tree_sitter_cpp();
 }
 
 namespace ts_mcp {
@@ -57,20 +56,30 @@ bool Tree::has_error() const {
 // TreeSitterParser implementation
 // ============================================================================
 
-TreeSitterParser::TreeSitterParser() : parser_(nullptr), last_source_() {
+TreeSitterParser::TreeSitterParser(Language lang)
+    : parser_(nullptr), last_source_(), language_(lang) {
     parser_ = ts_parser_new();
     if (!parser_) {
         throw std::runtime_error("Failed to create TSParser");
     }
 
-    // Set C++ language
-    TSLanguage* cpp = tree_sitter_cpp();
-    if (!ts_parser_set_language(parser_, cpp)) {
+    // Get language grammar
+    const TSLanguage* ts_lang = LanguageUtils::get_ts_language(lang);
+    if (!ts_lang) {
         ts_parser_delete(parser_);
-        throw std::runtime_error("Failed to set C++ language for parser");
+        throw std::runtime_error("Unsupported language: " +
+                                std::string(LanguageUtils::to_string(lang)));
     }
 
-    spdlog::debug("TreeSitterParser created successfully");
+    // Set language for parser
+    if (!ts_parser_set_language(parser_, ts_lang)) {
+        ts_parser_delete(parser_);
+        throw std::runtime_error("Failed to set language for parser: " +
+                                std::string(LanguageUtils::to_string(lang)));
+    }
+
+    spdlog::debug("TreeSitterParser created successfully for language: {}",
+                  LanguageUtils::to_string(lang));
 }
 
 TreeSitterParser::~TreeSitterParser() {
@@ -80,7 +89,9 @@ TreeSitterParser::~TreeSitterParser() {
 }
 
 TreeSitterParser::TreeSitterParser(TreeSitterParser&& other) noexcept
-    : parser_(other.parser_), last_source_(std::move(other.last_source_)) {
+    : parser_(other.parser_),
+      last_source_(std::move(other.last_source_)),
+      language_(other.language_) {
     other.parser_ = nullptr;
 }
 
@@ -91,6 +102,7 @@ TreeSitterParser& TreeSitterParser::operator=(TreeSitterParser&& other) noexcept
         }
         parser_ = other.parser_;
         last_source_ = std::move(other.last_source_);
+        language_ = other.language_;
         other.parser_ = nullptr;
     }
     return *this;

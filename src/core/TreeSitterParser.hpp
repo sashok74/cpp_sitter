@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <filesystem>
+#include "core/Language.hpp"
 
 // Forward declarations for tree-sitter C API
 extern "C" {
@@ -62,9 +63,10 @@ class TreeSitterParser {
 public:
     /**
      * @brief Construct a new TreeSitterParser
-     * @throws std::runtime_error if parser creation fails
+     * @param lang Programming language to parse (default: CPP)
+     * @throws std::runtime_error if parser creation fails or language not supported
      */
-    TreeSitterParser();
+    explicit TreeSitterParser(Language lang = Language::CPP);
 
     /**
      * @brief Destroy the TreeSitterParser
@@ -121,9 +123,16 @@ public:
      */
     const std::string& last_source() const { return last_source_; }
 
+    /**
+     * @brief Get the language this parser is configured for
+     * @return Language enum value
+     */
+    Language language() const { return language_; }
+
 private:
     TSParser* parser_;
     std::string last_source_;
+    Language language_;
 };
 
 } // namespace ts_mcp

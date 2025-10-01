@@ -5,6 +5,7 @@ add_library(ts_mcp_core STATIC
     QueryEngine.cpp
     ASTAnalyzer.cpp
     PathResolver.cpp
+    Language.cpp
 )
 
 target_include_directories(ts_mcp_core
@@ -16,6 +17,7 @@ target_link_libraries(ts_mcp_core
     PUBLIC
         tree-sitter::tree-sitter
         tree-sitter::cpp
+        tree-sitter::python
         nlohmann_json::nlohmann_json
         spdlog::spdlog
 )

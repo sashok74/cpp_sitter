@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "core/QueryEngine.hpp"
 #include "core/TreeSitterParser.hpp"
+#include "core/Language.hpp"
 #include <filesystem>
 
 using namespace ts_mcp;
@@ -10,7 +11,7 @@ TEST(QueryEngineTest, CompileValidQuery) {
     QueryEngine engine;
     std::string query_str = "(class_specifier) @class";
 
-    auto query = engine.compile_query(query_str);
+    auto query = engine.compile_query(query_str, Language::CPP);
 
     ASSERT_NE(query, nullptr) << "Should successfully compile a valid query";
     EXPECT_GT(query->pattern_count(), 0u) << "Query should have at least one pattern";
@@ -22,7 +23,7 @@ TEST(QueryEngineTest, CompileInvalidQuery) {
     QueryEngine engine;
     std::string invalid_query = "invalid (((";
 
-    auto query = engine.compile_query(invalid_query);
+    auto query = engine.compile_query(invalid_query, Language::CPP);
 
     EXPECT_EQ(query, nullptr) << "Should return nullptr for invalid query syntax";
 }
@@ -41,7 +42,7 @@ TEST(QueryEngineTest, FindAllClasses) {
     ASSERT_FALSE(tree->has_error());
 
     // Use predefined query for classes
-    auto query = engine.compile_query(QueryEngine::PredefinedQueries::ALL_CLASSES);
+    auto query = engine.compile_query(QueryEngine::PredefinedQueries::ALL_CLASSES, Language::CPP);
     ASSERT_NE(query, nullptr) << "Predefined ALL_CLASSES query should compile";
 
     auto matches = engine.execute(*tree, *query, parser.last_source());
@@ -74,7 +75,7 @@ TEST(QueryEngineTest, FindVirtualFunctions) {
 
     // Note: The predefined VIRTUAL_FUNCTIONS query may need refinement for the C++ grammar
     // For now, test with a simpler query that finds all functions
-    auto query = engine.compile_query(QueryEngine::PredefinedQueries::ALL_FUNCTIONS);
+    auto query = engine.compile_query(QueryEngine::PredefinedQueries::ALL_FUNCTIONS, Language::CPP);
     ASSERT_NE(query, nullptr) << "ALL_FUNCTIONS query should compile";
 
     auto matches = engine.execute(*tree, *query, parser.last_source());
@@ -102,7 +103,7 @@ TEST(QueryEngineTest, FindIncludes) {
     ASSERT_FALSE(tree->has_error());
 
     // Use predefined query for includes
-    auto query = engine.compile_query(QueryEngine::PredefinedQueries::INCLUDES);
+    auto query = engine.compile_query(QueryEngine::PredefinedQueries::INCLUDES, Language::CPP);
     ASSERT_NE(query, nullptr) << "Predefined INCLUDES query should compile";
 
     auto matches = engine.execute(*tree, *query, parser.last_source());
