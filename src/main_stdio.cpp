@@ -32,7 +32,7 @@ namespace {
 
 int main(int argc, char** argv) {
     // Parse command-line arguments
-    CLI::App app{"MCP Stdio Server - Tree-sitter C++ Code Analysis"};
+    CLI::App app{"MCP Stdio Server - Tree-sitter Code Analysis (C++ & Python)"};
 
     std::string log_level = "info";
     app.add_option("-l,--log-level", log_level, "Log level (trace, debug, info, warn, error, critical)")
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     CLI11_PARSE(app, argc, argv);
 
     if (version) {
-        std::cout << "cpp-treesitter-mcp version 0.1.0" << std::endl;
+        std::cout << "tree-sitter-mcp version 1.0.0" << std::endl;
         return 0;
     }
 
