@@ -74,14 +74,9 @@ sudo bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 
 ### Шаг 2: Проверка конфигурации
 
-**Linux:**
+**Проверьте созданную конфигурацию:**
 ```bash
-cat ~/.config/claude/claude_desktop_config.json
-```
-
-**macOS:**
-```bash
-cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
+cat ~/.claude-code/mcp_config.json
 ```
 
 **Ожидаемое содержимое:**
@@ -94,6 +89,11 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
     }
   }
 }
+```
+
+**Проверьте синтаксис JSON:**
+```bash
+python3 -m json.tool ~/.claude-code/mcp_config.json
 ```
 
 ### Шаг 3: Проверка sub-agent
@@ -131,17 +131,15 @@ claude @ts-strategist "analyze /tmp/test.cpp"
 
 ### Шаг 1: Создайте конфигурацию MCP сервера
 
-**Linux:**
+**Для Claude Code CLI (командная строка):**
+
 ```bash
-mkdir -p ~/.config/claude
-nano ~/.config/claude/claude_desktop_config.json
+mkdir -p ~/.claude-code
+nano ~/.claude-code/mcp_config.json
 ```
 
-**macOS:**
-```bash
-mkdir -p ~/Library/Application\ Support/Claude
-nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
+**ВАЖНО:** Для Claude Code CLI используется `~/.claude-code/mcp_config.json`,
+а НЕ `~/.config/claude/claude_desktop_config.json` (который для Desktop app)
 
 **Содержимое файла:**
 ```json
