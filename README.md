@@ -307,6 +307,20 @@ echo '{
 (import_from_statement) @import_from
 ```
 
+## Documentation
+
+### Installation Guides
+
+- **[Claude Code CLI Setup](doc/INSTALL_CLAUDE_CLI.md)** - Connect to Claude CLI (`claude @ts-strategist`)
+- **[Claude Code Desktop Setup](doc/INSTALL_CLAUDE_MCP.md)** - Connect to Claude Desktop app
+- **[Quick Start (Russian)](doc/quick-start-ru.md)** - Полный гайд на русском языке
+- **[Build Instructions](BUILD.md)** - Detailed build, CMake options, troubleshooting
+
+### API Documentation
+
+- **[MCP API Reference](doc/MCP_API_REFERENCE.md)** - Complete API with request/response examples
+- **[Technical Specification](doc/tz.md)** - Architecture and implementation details
+
 ## Building from Source
 
 See [BUILD.md](BUILD.md) for detailed build instructions, CMake options, and troubleshooting.
