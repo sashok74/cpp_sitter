@@ -84,6 +84,19 @@ private:
     json handle_tools_call(const json& params);
 
     /**
+     * @brief Handle initialize method (MCP handshake)
+     * @param params Client capabilities and info
+     * @return Server capabilities and info
+     */
+    json handle_initialize(const json& params);
+
+    /**
+     * @brief Handle notifications/initialized notification
+     * @param params Notification parameters (unused)
+     */
+    void handle_initialized_notification(const json& params);
+
+    /**
      * @brief Create JSON-RPC error response
      * @param id Request ID (or null)
      * @param code Error code
@@ -96,6 +109,7 @@ private:
     std::map<std::string, ToolInfo> tools_;
     std::map<std::string, ToolHandler> handlers_;
     std::atomic<bool> running_{false};
+    bool initialized_{false};
 };
 
 } // namespace ts_mcp

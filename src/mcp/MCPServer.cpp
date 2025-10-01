@@ -40,7 +40,11 @@ void MCPServer::run() {
             }
 
             json response = handle_request(request);
-            transport_->write_message(response);
+
+            // Only send response if it's not empty (notifications return empty)
+            if (!response.empty() && !response.is_null()) {
+                transport_->write_message(response);
+            }
 
         } catch (const std::exception& e) {
             spdlog::error("Error in main loop: {}", e.what());
@@ -82,7 +86,19 @@ json MCPServer::handle_request(const json& request) {
     spdlog::debug("Handling request: method={}, id={}", method, id.dump());
 
     try {
-        if (method == "tools/list") {
+        if (method == "initialize") {
+            json result = handle_initialize(params);
+            initialized_ = true;
+            return {
+                {"jsonrpc", "2.0"},
+                {"id", id},
+                {"result", result}
+            };
+        } else if (method == "notifications/initialized") {
+            // This is a notification (no response expected)
+            handle_initialized_notification(params);
+            return json();  // Return empty to skip response
+        } else if (method == "tools/list") {
             json result = handle_tools_list();
             return {
                 {"jsonrpc", "2.0"},
@@ -146,6 +162,34 @@ json MCPServer::handle_tools_call(const json& params) {
             }
         })}
     };
+}
+
+json MCPServer::handle_initialize(const json& params) {
+    spdlog::info("Handling initialize request");
+
+    // Extract client info if provided
+    if (params.contains("clientInfo")) {
+        std::string client_name = params["clientInfo"].value("name", "unknown");
+        std::string client_version = params["clientInfo"].value("version", "unknown");
+        spdlog::info("Client: {} version {}", client_name, client_version);
+    }
+
+    // Return server capabilities
+    return {
+        {"protocolVersion", "2024-11-05"},
+        {"capabilities", {
+            {"tools", json::object()}  // We support tools
+        }},
+        {"serverInfo", {
+            {"name", "tree-sitter-mcp"},
+            {"version", "1.0.0"}
+        }}
+    };
+}
+
+void MCPServer::handle_initialized_notification(const json& params) {
+    spdlog::info("Client sent initialized notification, server is ready");
+    // Nothing to do for notifications - they don't expect responses
 }
 
 json MCPServer::create_error_response(const json& id, int code, const std::string& message) {
