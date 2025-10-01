@@ -106,14 +106,14 @@ cmake --build . -j$(nproc)
 cmake --build .
 
 # Build specific target
-cmake --build . --target mcp_stdio_server
+cmake --build . --target tree-sitter-mcp
 ```
 
 **Targets**:
 - `ts_mcp_core`: Core library
 - `ts_mcp_protocol`: Protocol library
 - `ts_mcp_tools`: Tools library
-- `mcp_stdio_server`: Main executable
+- `tree-sitter-mcp`: Main executable
 - `core_tests`, `mcp_tests`, `tools_tests`, `integration_tests`: Test executables
 
 ### 6. Test
@@ -144,7 +144,7 @@ cmake --install . --prefix=/opt/tree-sitter-mcp
 ```
 
 **Installed files**:
-- `/usr/local/bin/mcp_stdio_server` (or custom prefix)
+- `/usr/local/bin/tree-sitter-mcp` (or custom prefix)
 - `/usr/local/share/tree-sitter-mcp/install_claude_agent.sh`
 
 ## CMake Options
@@ -332,7 +332,7 @@ Check for memory leaks:
 cmake .. -DCMAKE_BUILD_TYPE=Debug
 
 # Run with valgrind
-valgrind --leak-check=full ./build/src/mcp_stdio_server < test_input.json
+valgrind --leak-check=full ./build/src/tree-sitter-mcp < test_input.json
 ```
 
 ## Performance Optimization
@@ -359,8 +359,8 @@ cmake .. -DCMAKE_CXX_FLAGS="-pg" -DCMAKE_EXE_LINKER_FLAGS="-pg"
 cmake --build .
 
 # Run and generate profile
-./build/src/mcp_stdio_server < input.json
-gprof ./build/src/mcp_stdio_server gmon.out > profile.txt
+./build/src/tree-sitter-mcp < input.json
+gprof ./build/src/tree-sitter-mcp gmon.out > profile.txt
 ```
 
 ## Clean Build
@@ -409,7 +409,7 @@ jobs:
 
 After successful build:
 
-1. **Verify installation**: `which mcp_stdio_server`
+1. **Verify installation**: `which tree-sitter-mcp`
 2. **Test manually**: See README.md Quick Test section
 3. **Configure Claude**: Run `install_claude_agent.sh`
 4. **Integration test**: `bash tests/integration/test_claude_integration.sh`

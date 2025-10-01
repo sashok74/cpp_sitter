@@ -230,7 +230,7 @@ if(BUILD_TESTS)
 endif()
 
 # Installation
-install(TARGETS mcp_stdio_server
+install(TARGETS tree-sitter-mcp
     RUNTIME DESTINATION bin
 )
 
@@ -759,9 +759,9 @@ add_subdirectory(mcp)
 add_subdirectory(tools)
 
 # Stdio server executable
-add_executable(mcp_stdio_server main_stdio.cpp)
+add_executable(tree-sitter-mcp main_stdio.cpp)
 
-target_link_libraries(mcp_stdio_server
+target_link_libraries(tree-sitter-mcp
     PRIVATE
         ts_mcp_tools
         CLI11::CLI11
@@ -831,7 +831,7 @@ json pop_response();                       // Получить ответ
 {
   "mcpServers": {
     "cpp-treesitter": {
-      "command": "/usr/local/bin/mcp_stdio_server",
+      "command": "/usr/local/bin/tree-sitter-mcp",
       "args": ["--log-level", "info"]
     }
   }
@@ -1203,7 +1203,7 @@ ctest --output-on-failure
 # 2. StdioTransport
 # 3. Один инструмент (ParseFileTool)
 # 4. Собрать и протестировать вручную
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | ./mcp_stdio_server
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | ./tree-sitter-mcp
 
 # 5. Остальные инструменты
 # 6. main_stdio.cpp
@@ -1272,14 +1272,14 @@ ctest --output-on-failure
 **После Phase 4:**
 ```bash
 cd build
-./mcp_stdio_server --help
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ./mcp_stdio_server
+./tree-sitter-mcp --help
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ./tree-sitter-mcp
 # Должен вернуть JSON со списком инструментов
 ```
 
 **После Phase 6:**
 ```bash
-which mcp_stdio_server
+which tree-sitter-mcp
 # Должен показать путь
 ls ~/.claude/agents/ts-strategist.json
 # Файл должен существовать
@@ -1432,7 +1432,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/tests/fixtures
 **Решение:**
 1. Проверь путь к исполняемому файлу:
 ```bash
-which mcp_stdio_server
+which tree-sitter-mcp
 ```
 
 2. Проверь конфигурацию:
@@ -1442,7 +1442,7 @@ cat ~/.config/claude/claude_desktop_config.json
 
 3. Проверь что сервер запускается:
 ```bash
-mcp_stdio_server --help
+tree-sitter-mcp --help
 ```
 
 4. Перезапусти Claude Code
@@ -1451,7 +1451,7 @@ mcp_stdio_server --help
 
 **Проверка:**
 ```bash
-valgrind --leak-check=full ./mcp_stdio_server < test_input.json
+valgrind --leak-check=full ./tree-sitter-mcp < test_input.json
 ```
 
 **Типичные причины:**
@@ -1469,9 +1469,9 @@ valgrind --leak-check=full ./mcp_stdio_server < test_input.json
 |---------|------|--------------|
 | **Покрытие тестами** | ≥80% | `cmake --build . --target coverage` |
 | **Время сборки** | <2 мин | `time cmake --build .` |
-| **Размер бинаря** | <5 MB | `ls -lh mcp_stdio_server` |
-| **Startup time** | <500ms | `time echo "{}" \| ./mcp_stdio_server` |
-| **Memory usage** | <50MB idle | `ps aux \| grep mcp_stdio_server` |
+| **Размер бинаря** | <5 MB | `ls -lh tree-sitter-mcp` |
+| **Startup time** | <500ms | `time echo "{}" \| ./tree-sitter-mcp` |
+| **Memory usage** | <50MB idle | `ps aux \| grep tree-sitter-mcp` |
 | **Количество warnings** | 0 | `cmake --build . 2>&1 \| grep warning` |
 
 ### Отслеживание прогресса

@@ -5,9 +5,9 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build"
-MCP_SERVER="${BUILD_DIR}/src/mcp_stdio_server"
+MCP_SERVER="${BUILD_DIR}/src/tree-sitter-mcp"
 
-echo "=== cpp-treesitter-mcp Claude Integration Test ==="
+echo "=== tree-sitter-mcp Claude Integration Test ==="
 echo ""
 
 # Test 1: Check MCP server executable exists
@@ -94,7 +94,7 @@ if [ -n "${CLAUDE_CONFIG_DIR}" ]; then
     CONFIG_FILE="${CLAUDE_CONFIG_DIR}/claude_desktop_config.json"
     if [ -f "${CONFIG_FILE}" ]; then
         echo "  ✓ Claude config found: ${CONFIG_FILE}"
-        if grep -q "cpp-treesitter" "${CONFIG_FILE}" 2>/dev/null; then
+        if grep -q "tree-sitter" "${CONFIG_FILE}" 2>/dev/null; then
             echo "    ✓ MCP server registered in config"
         else
             echo "    ⚠ MCP server not registered yet"

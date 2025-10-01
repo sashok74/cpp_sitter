@@ -4,18 +4,18 @@ add_subdirectory(mcp)
 add_subdirectory(tools)
 
 # MCP Stdio Server executable
-add_executable(mcp_stdio_server main_stdio.cpp)
+add_executable(tree-sitter-mcp main_stdio.cpp)
 
-target_link_libraries(mcp_stdio_server
+target_link_libraries(tree-sitter-mcp
     PRIVATE
         ts_mcp_tools
         CLI11::CLI11
         spdlog::spdlog
 )
 
-target_compile_features(mcp_stdio_server PRIVATE cxx_std_20)
+target_compile_features(tree-sitter-mcp PRIVATE cxx_std_20)
 
 # Installation
-install(TARGETS mcp_stdio_server
+install(TARGETS tree-sitter-mcp
     RUNTIME DESTINATION bin
 )

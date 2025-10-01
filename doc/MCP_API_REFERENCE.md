@@ -816,16 +816,16 @@ You can test the server directly from the command line:
 
 ```bash
 # List available tools
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | mcp_stdio_server --log-level error
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | tree-sitter-mcp --log-level error
 
 # Parse a single file
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"src/main.cpp"}}}' | mcp_stdio_server --log-level error
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"src/main.cpp"}}}' | tree-sitter-mcp --log-level error
 
 # Find classes in directory
-echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"src/","recursive":true,"file_patterns":["*.cpp","*.hpp"]}}}' | mcp_stdio_server --log-level error
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"src/","recursive":true,"file_patterns":["*.cpp","*.hpp"]}}}' | tree-sitter-mcp --log-level error
 
 # Execute custom query
-echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"src/core/TreeSitterParser.hpp","query":"(class_specifier name: (type_identifier) @class_name)"}}}' | mcp_stdio_server --log-level error
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"src/core/TreeSitterParser.hpp","query":"(class_specifier name: (type_identifier) @class_name)"}}}' | tree-sitter-mcp --log-level error
 ```
 
 ---

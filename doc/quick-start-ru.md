@@ -87,11 +87,11 @@ sudo bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 
 ```bash
 # Проверьте, что бинарник установлен
-which mcp_stdio_server
-# Должно вывести: /usr/local/bin/mcp_stdio_server
+which tree-sitter-mcp
+# Должно вывести: /usr/local/bin/tree-sitter-mcp
 
 # Проверьте версию и справку
-mcp_stdio_server --help
+tree-sitter-mcp --help
 ```
 
 ---
@@ -102,7 +102,7 @@ mcp_stdio_server --help
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
-  mcp_stdio_server --log-level error
+  tree-sitter-mcp --log-level error
 ```
 
 **Ожидаемый результат:** JSON с 4 инструментами:
@@ -138,7 +138,7 @@ EOF
 
 # Выполните парсинг
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"/tmp/test.cpp"}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 **Ожидаемый результат:**
@@ -161,7 +161,7 @@ echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"parse_file
 
 ```bash
 echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"/tmp/test.cpp"}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 **Ожидаемый результат:** Список найденных классов с номерами строк.
@@ -170,7 +170,7 @@ echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_class
 
 ```bash
 echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"find_functions","arguments":{"filepath":"/tmp/test.cpp"}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 ### Тест 5: Произвольный tree-sitter запрос
@@ -178,7 +178,7 @@ echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"find_funct
 ```bash
 # Найти все include директивы
 echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"/tmp/test.cpp","query":"(preproc_include) @include"}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 ### Тест 6: Массив файлов (Batch обработка)
@@ -195,7 +195,7 @@ EOF
 
 # Проанализируйте несколько файлов одновременно
 echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":["/tmp/test_a.cpp","/tmp/test_b.cpp"]}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 **Ожидаемый результат:**
@@ -227,7 +227,7 @@ EOF
 
 # Просканируйте всю директорию рекурсивно
 echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"/tmp/test_project","recursive":true}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 **Ожидаемый результат:** Найдены все классы из всех файлов в директории и поддиректориях.
@@ -242,7 +242,7 @@ EOF
 
 # Найдите классы только в .hpp файлах
 echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"/tmp/test_project","recursive":true,"file_patterns":["*.hpp"]}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 **Ожидаемый результат:** Найден только класс `Header` из файла header.hpp, файлы .cpp проигнорированы.
@@ -269,7 +269,7 @@ EOF
 
 # Выполните парсинг
 echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"/tmp/test.py"}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 **Ожидаемый результат:**
@@ -292,7 +292,7 @@ echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"parse_file
 
 ```bash
 echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"/tmp/test.py","query":"(decorator) @decorator"}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 **Ожидаемый результат:** Найден декоратор `@staticmethod`.
@@ -325,7 +325,7 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
 {
   "mcpServers": {
     "tree-sitter": {
-      "command": "/usr/local/bin/mcp_stdio_server",
+      "command": "/usr/local/bin/tree-sitter-mcp",
       "args": ["--log-level", "info"]
     }
   }
@@ -399,12 +399,12 @@ claude @ts-strategist "execute query to find all virtual functions in /tmp/test.
 
 ## 🐛 Устранение неполадок
 
-### Проблема 1: "mcp_stdio_server: command not found"
+### Проблема 1: "tree-sitter-mcp: command not found"
 
 **Решение:**
 ```bash
 # Проверьте установку
-which mcp_stdio_server
+which tree-sitter-mcp
 
 # Если не найден, переустановите
 cd /home/raa/projects/cpp-sitter/build
@@ -419,10 +419,10 @@ sudo cmake --install .
 cat ~/.config/claude/claude_desktop_config.json
 
 # 2. Проверьте, что сервер запускается
-mcp_stdio_server --help
+tree-sitter-mcp --help
 
 # 3. Проверьте права доступа
-ls -la /usr/local/bin/mcp_stdio_server
+ls -la /usr/local/bin/tree-sitter-mcp
 
 # 4. Перезапустите Claude Code Desktop
 pkill -9 claude  # или через GUI
@@ -447,7 +447,7 @@ ls -la /path/to/file.cpp
 
 # Попробуйте распарсить напрямую
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"/path/to/file.cpp"}}}' | \
-  mcp_stdio_server --log-level debug
+  tree-sitter-mcp --log-level debug
 ```
 
 ### Проблема 4: Сборка не удается
@@ -492,7 +492,7 @@ ls -R /path/to/directory/*.cpp
 
 # Попробуйте с явным указанием паттернов
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"/path/to/directory","recursive":true,"file_patterns":["*.cpp","*.hpp","*.h"]}}}' | \
-  mcp_stdio_server --log-level debug
+  tree-sitter-mcp --log-level debug
 ```
 
 ### Проблема 7: Batch обработка слишком медленная
@@ -505,7 +505,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"parse_file
 ```bash
 # Оптимизированный запрос - только .hpp в корневой директории
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"src/","recursive":false,"file_patterns":["*.hpp"]}}}' | \
-  mcp_stdio_server --log-level error
+  tree-sitter-mcp --log-level error
 ```
 
 ---
@@ -520,7 +520,7 @@ claude @ts-strategist "analyze all files in src/ and show summary"
 
 # Или напрямую через MCP
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"src/","recursive":true}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 ### Пример 2: Анализ нескольких конкретных файлов
@@ -528,7 +528,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"parse_file
 ```bash
 # Массив путей для точечного анализа
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":["src/core/ASTAnalyzer.cpp","src/mcp/MCPServer.cpp"]}}}' | \
-  mcp_stdio_server --log-level error | python3 -m json.tool
+  tree-sitter-mcp --log-level error | python3 -m json.tool
 ```
 
 ### Пример 3: Поиск виртуальных методов
@@ -547,7 +547,7 @@ claude @ts-strategist "show all includes in src/core/TreeSitterParser.cpp"
 
 ```bash
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"/tmp/test.cpp","query":"(template_declaration (class_specifier name: (type_identifier) @name))"}}}' | \
-  mcp_stdio_server --log-level error
+  tree-sitter-mcp --log-level error
 ```
 
 ---
@@ -675,7 +675,7 @@ claude @ts-strategist 'execute this query: "(decorator) @decorator" on file test
 
 При возникновении проблем:
 
-1. Проверьте логи сервера: `mcp_stdio_server --log-level debug`
+1. Проверьте логи сервера: `tree-sitter-mcp --log-level debug`
 2. Запустите интеграционные тесты: `ctest --output-on-failure`
 3. Проверьте конфигурацию Claude Code
 4. Создайте issue с подробным описанием проблемы
@@ -689,7 +689,7 @@ claude @ts-strategist 'execute this query: "(decorator) @decorator" on file test
 - [ ] Все зависимости установлены (gcc, cmake, conan)
 - [ ] Проект успешно собран (`cmake --build .`)
 - [ ] Все тесты проходят (`ctest` - 42/42: 33 C++ + 9 Python)
-- [ ] Сервер установлен (`which mcp_stdio_server`)
+- [ ] Сервер установлен (`which tree-sitter-mcp`)
 - [ ] Ручные тесты работают (10 сценариев: C++/Python/single/array/directory/patterns)
 - [ ] Claude Code CLI установлен (`claude --version`)
 - [ ] MCP сервер зарегистрирован в конфигурации Claude

@@ -56,7 +56,7 @@ ctest -V
 cmake --build build --target ts_mcp_core
 
 # Build stdio server
-cmake --build build --target mcp_stdio_server
+cmake --build build --target tree-sitter-mcp
 
 # Build SSE server (if enabled)
 cmake --build build --target mcp_sse_server
@@ -68,13 +68,13 @@ cmake --build build -j$(nproc)
 ### Manual Testing of MCP Server
 ```bash
 # Test stdio transport directly
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ./build/mcp_stdio_server
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | ./build/tree-sitter-mcp
 
 # Test with log level
-./build/mcp_stdio_server --log-level debug < test_request.json
+./build/tree-sitter-mcp --log-level debug < test_request.json
 
 # Check available options
-./build/mcp_stdio_server --help
+./build/tree-sitter-mcp --help
 ```
 
 ### Installation
@@ -87,7 +87,7 @@ sudo cmake --install .
 ./install_claude_agent.sh
 
 # Verify installation
-which mcp_stdio_server
+which tree-sitter-mcp
 ls ~/.claude/agents/ts-strategist.json
 ```
 
@@ -201,7 +201,7 @@ ts_mcp_protocol (library)
 ts_mcp_tools (library)
 ├── Depends: ts_mcp_core, ts_mcp_protocol
 │
-mcp_stdio_server (executable)
+tree-sitter-mcp (executable)
 ├── Depends: ts_mcp_tools, CLI11
 │
 mcp_sse_server (executable, optional)
@@ -277,7 +277,7 @@ Server is registered in `~/.config/claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "cpp-treesitter": {
-      "command": "/usr/local/bin/mcp_stdio_server",
+      "command": "/usr/local/bin/tree-sitter-mcp",
       "args": ["--log-level", "info"]
     }
   }
@@ -322,7 +322,7 @@ file(COPY ${CMAKE_SOURCE_DIR}/tests/fixtures
 ### Memory Leaks
 Run with valgrind:
 ```bash
-valgrind --leak-check=full ./build/mcp_stdio_server < test_input.json
+valgrind --leak-check=full ./build/tree-sitter-mcp < test_input.json
 ```
 
 Common causes:

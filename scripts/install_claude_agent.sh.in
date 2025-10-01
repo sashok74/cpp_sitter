@@ -6,7 +6,7 @@ set -e
 
 PROJECT_NAME="tree-sitter-mcp"
 INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
-MCP_SERVER_PATH="${INSTALL_PREFIX}/bin/mcp_stdio_server"
+MCP_SERVER_PATH="${INSTALL_PREFIX}/bin/tree-sitter-mcp"
 
 # Determine OS and config paths
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -32,9 +32,9 @@ echo "Claude config dir: ${CLAUDE_CONFIG_DIR}"
 echo "Claude agents dir: ${CLAUDE_AGENTS_DIR}"
 echo ""
 
-# Check if mcp_stdio_server exists
+# Check if tree-sitter-mcp exists
 if [ ! -f "${MCP_SERVER_PATH}" ]; then
-    echo "ERROR: mcp_stdio_server not found at ${MCP_SERVER_PATH}"
+    echo "ERROR: tree-sitter-mcp not found at ${MCP_SERVER_PATH}"
     echo "Please run 'sudo cmake --install .' first"
     exit 1
 fi

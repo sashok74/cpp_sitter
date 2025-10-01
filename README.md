@@ -61,7 +61,7 @@ bash /usr/local/share/tree-sitter-mcp/install_claude_agent.sh
 
 ```bash
 # Test the server directly
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | mcp_stdio_server --log-level error
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | tree-sitter-mcp --log-level error
 
 # Test with Claude Code (C++)
 claude @ts-strategist "analyze src/core/TreeSitterParser.cpp"
@@ -240,7 +240,7 @@ echo '{
     "name": "parse_file",
     "arguments": {"filepath": "test.cpp"}
   }
-}' | mcp_stdio_server --log-level error
+}' | tree-sitter-mcp --log-level error
 
 # Parse multiple files
 echo '{
@@ -253,7 +253,7 @@ echo '{
       "filepath": ["src/a.cpp", "src/b.cpp"]
     }
   }
-}' | mcp_stdio_server --log-level error
+}' | tree-sitter-mcp --log-level error
 
 # Scan directory recursively
 echo '{
@@ -268,7 +268,7 @@ echo '{
       "file_patterns": ["*.hpp"]
     }
   }
-}' | mcp_stdio_server --log-level error
+}' | tree-sitter-mcp --log-level error
 ```
 
 ### Tree-sitter Query Examples
@@ -376,10 +376,10 @@ Target metrics (achieved):
 
 ```bash
 # Check if server is executable
-which mcp_stdio_server
+which tree-sitter-mcp
 
 # Test manually
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | mcp_stdio_server
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | tree-sitter-mcp
 ```
 
 ### Claude Code not finding tools
