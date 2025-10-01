@@ -1,10 +1,10 @@
 #!/bin/bash
-# Installation script for cpp-treesitter-mcp Claude Code integration
+# Installation script for tree-sitter-mcp Claude Code integration
 # This script configures the MCP server and sub-agent for Claude Code CLI
 
 set -e
 
-PROJECT_NAME="cpp-treesitter-mcp"
+PROJECT_NAME="tree-sitter-mcp"
 INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
 MCP_SERVER_PATH="${INSTALL_PREFIX}/bin/mcp_stdio_server"
 
@@ -24,7 +24,7 @@ fi
 
 CLAUDE_CONFIG_FILE="${CLAUDE_CONFIG_DIR}/claude_desktop_config.json"
 
-echo "=== cpp-treesitter-mcp Claude Integration Setup ==="
+echo "=== tree-sitter-mcp Claude Integration Setup ==="
 echo ""
 echo "Installation prefix: ${INSTALL_PREFIX}"
 echo "MCP server path: ${MCP_SERVER_PATH}"
@@ -61,7 +61,7 @@ if command -v jq &> /dev/null; then
     # Update using jq
     tmp_file=$(mktemp)
     jq --arg path "${MCP_SERVER_PATH}" \
-       '.mcpServers["cpp-treesitter"] = {
+       '.mcpServers["tree-sitter"] = {
            "command": $path,
            "args": ["--log-level", "info"]
        }' "${CLAUDE_CONFIG_FILE}" > "${tmp_file}"
@@ -80,7 +80,7 @@ with open(config_file, 'r') as f:
 if 'mcpServers' not in config:
     config['mcpServers'] = {}
 
-config['mcpServers']['cpp-treesitter'] = {
+config['mcpServers']['tree-sitter'] = {
     'command': '${MCP_SERVER_PATH}',
     'args': ['--log-level', 'info']
 }
@@ -96,7 +96,7 @@ else
     echo ""
     echo '{
   "mcpServers": {
-    "cpp-treesitter": {
+    "tree-sitter": {
       "command": "'${MCP_SERVER_PATH}'",
       "args": ["--log-level", "info"]
     }
@@ -120,7 +120,7 @@ fi
 echo ""
 echo "=== Installation Complete ==="
 echo ""
-echo "The cpp-treesitter-mcp server has been configured for Claude Code."
+echo "The tree-sitter-mcp server has been configured for Claude Code."
 echo ""
 echo "Usage:"
 echo "  1. Regular MCP tools (available to all Claude Code sessions):"
@@ -128,6 +128,7 @@ echo "     - Tools will be available automatically in Claude Code"
 echo ""
 echo "  2. Specialized sub-agent:"
 echo "     claude @ts-strategist \"analyze src/core/TreeSitterParser.cpp\""
+echo "     claude @ts-strategist \"find all classes in tests/fixtures/simple_class.py\""
 echo "     claude @ts-strategist \"find all virtual functions in src/\""
 echo ""
 echo "Verification:"

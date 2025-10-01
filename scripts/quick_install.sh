@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quick install script for cpp-treesitter-mcp
+# Quick install script for tree-sitter-mcp
 # Builds, installs, and configures Claude Code integration
 
 set -e
@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-echo "=== cpp-treesitter-mcp Quick Install ==="
+echo "=== tree-sitter-mcp Quick Install ==="
 echo "Project root: ${PROJECT_ROOT}"
 echo ""
 

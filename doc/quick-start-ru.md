@@ -324,7 +324,7 @@ cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
 ```json
 {
   "mcpServers": {
-    "cpp-treesitter": {
+    "tree-sitter": {
       "command": "/usr/local/bin/mcp_stdio_server",
       "args": ["--log-level", "info"]
     }
