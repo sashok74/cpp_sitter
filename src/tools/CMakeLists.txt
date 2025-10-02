@@ -5,6 +5,12 @@ add_library(ts_mcp_tools
     FindClassesTool.cpp
     FindFunctionsTool.cpp
     ExecuteQueryTool.cpp
+    ExtractInterfaceTool.cpp
+    FindReferencesTool.cpp
+    GetFileSummaryTool.cpp
+    GetClassHierarchyTool.cpp
+    GetDependencyGraphTool.cpp
+    GetSymbolContextTool.cpp
 )
 
 target_include_directories(ts_mcp_tools

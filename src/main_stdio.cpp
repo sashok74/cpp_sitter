@@ -5,6 +5,12 @@
 #include "tools/FindClassesTool.hpp"
 #include "tools/FindFunctionsTool.hpp"
 #include "tools/ExecuteQueryTool.hpp"
+#include "tools/ExtractInterfaceTool.hpp"
+#include "tools/FindReferencesTool.hpp"
+#include "tools/GetFileSummaryTool.hpp"
+#include "tools/GetClassHierarchyTool.hpp"
+#include "tools/GetDependencyGraphTool.hpp"
+#include "tools/GetSymbolContextTool.hpp"
 
 #include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
@@ -111,6 +117,54 @@ int main(int argc, char** argv) {
             ts_mcp::ExecuteQueryTool::get_info(),
             [execute_query_tool](const nlohmann::json& args) {
                 return execute_query_tool->execute(args);
+            }
+        );
+
+        auto extract_interface_tool = std::make_shared<ts_mcp::ExtractInterfaceTool>(analyzer);
+        server->register_tool(
+            ts_mcp::ExtractInterfaceTool::get_info(),
+            [extract_interface_tool](const nlohmann::json& args) {
+                return extract_interface_tool->execute(args);
+            }
+        );
+
+        auto find_references_tool = std::make_shared<ts_mcp::FindReferencesTool>(analyzer);
+        server->register_tool(
+            ts_mcp::FindReferencesTool::get_info(),
+            [find_references_tool](const nlohmann::json& args) {
+                return find_references_tool->execute(args);
+            }
+        );
+
+        auto get_file_summary_tool = std::make_shared<ts_mcp::GetFileSummaryTool>(analyzer);
+        server->register_tool(
+            ts_mcp::GetFileSummaryTool::get_info(),
+            [get_file_summary_tool](const nlohmann::json& args) {
+                return get_file_summary_tool->execute(args);
+            }
+        );
+
+        auto get_class_hierarchy_tool = std::make_shared<ts_mcp::GetClassHierarchyTool>(analyzer);
+        server->register_tool(
+            ts_mcp::GetClassHierarchyTool::get_info(),
+            [get_class_hierarchy_tool](const nlohmann::json& args) {
+                return get_class_hierarchy_tool->execute(args);
+            }
+        );
+
+        auto get_dependency_graph_tool = std::make_shared<ts_mcp::GetDependencyGraphTool>(analyzer);
+        server->register_tool(
+            ts_mcp::GetDependencyGraphTool::get_info(),
+            [get_dependency_graph_tool](const nlohmann::json& args) {
+                return get_dependency_graph_tool->execute(args);
+            }
+        );
+
+        auto get_symbol_context_tool = std::make_shared<ts_mcp::GetSymbolContextTool>(analyzer);
+        server->register_tool(
+            ts_mcp::GetSymbolContextTool::get_info(),
+            [get_symbol_context_tool](const nlohmann::json& args) {
+                return get_symbol_context_tool->execute(args);
             }
         );
 

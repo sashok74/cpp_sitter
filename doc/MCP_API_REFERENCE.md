@@ -1,23 +1,96 @@
 # MCP API Reference
 
-Quick reference for all available MCP tools with request/response examples.
+Quick reference for all available MCP tools.
 
-## Table of Contents
+## Available Tools
 
-1. [tools/list](#toolslist) - List available tools
-2. [parse_file](#parse_file) - Parse and analyze files
-3. [find_classes](#find_classes) - Extract class declarations
-4. [find_functions](#find_functions) - Extract function definitions
-5. [execute_query](#execute_query) - Run custom tree-sitter queries
+### 1. parse_file
+Parse C++/Python files and return basic metadata (class/function counts, errors, language).
+
+**Input:** `filepath` (string/array/directory), `recursive` (bool), `file_patterns` (array)
+**Output:** `{class_count, function_count, include_count, has_errors, language, success}`
 
 ---
 
-## tools/list
+### 2. find_classes
+Extract all class declarations with line numbers.
+
+**Input:** `filepath` (string/array/directory), `recursive` (bool), `file_patterns` (array)
+**Output:** `{classes: [{name, line, column}], success}`
+
+---
+
+### 3. find_functions
+Extract all function definitions with line numbers.
+
+**Input:** `filepath` (string/array/directory), `recursive` (bool), `file_patterns` (array)
+**Output:** `{functions: [{name, line, column}], success}`
+
+---
+
+### 4. execute_query
+Run custom tree-sitter S-expression queries on code.
+
+**Input:** `filepath` (string/array/directory), `query` (S-expression), `recursive` (bool), `file_patterns` (array)
+**Output:** `{matches: [{capture_name, text, line, column}], success}`
+
+---
+
+### 5. extract_interface
+Extract function signatures and class interfaces without implementation bodies (reduces AI context).
+
+**Input:** `filepath` (string/array/directory), `output_format` (json/header/markdown), `include_private` (bool), `include_comments` (bool), `recursive` (bool), `file_patterns` (array)
+**Output:** `{functions: [{signature, line, comment}], classes: [{name, methods, members}], success}`
+
+---
+
+### 6. find_references
+Find all references to a symbol with AST-based classification (call, declaration, definition).
+
+**Input:** `symbol` (string), `filepath` (string/array/directory), `reference_types` (array), `include_context` (bool), `recursive` (bool), `file_patterns` (array)
+**Output:** `{symbol, total_references, references: [{filepath, line, column, type, context, parent_scope}], success}`
+
+---
+
+### 7. get_file_summary
+Enhanced file analysis with cyclomatic complexity, TODO/FIXME extraction, full signatures, and code metrics.
+
+**Input:** `filepath` (string/array/directory), `include_complexity` (bool), `include_comments` (bool), `include_docstrings` (bool), `recursive` (bool), `file_patterns` (array)
+**Output:** `{metrics: {total_lines, code_lines, comment_lines, blank_lines}, functions: [{name, return_type, parameters, line, complexity, docstring}], classes: [{name, line}], imports: [{path, line, is_system}], comment_markers: [{type, text, line}], success}`
+
+---
+
+### 8. get_class_hierarchy
+Analyze C++ class inheritance hierarchies with virtual methods and OOP structure.
+
+**Input:** `filepath` (string/array/directory), `class_name` (string, optional), `show_methods` (bool), `show_virtual_only` (bool), `max_depth` (int), `recursive` (bool), `file_patterns` (array)
+**Output:** `{classes: [{name, line, file, base_classes, is_abstract, virtual_methods: [{name, signature, line, is_pure_virtual, is_override, is_final, access}]}], hierarchy: {class_name: {children, parents, is_abstract}}, success}`
+
+---
+
+### 9. get_dependency_graph
+Build #include dependency graphs with cycle detection and topological sorting.
+
+**Input:** `filepath` (string/array/directory), `show_system_includes` (bool), `detect_cycles` (bool), `max_depth` (int), `output_format` (json/mermaid/dot), `recursive` (bool), `file_patterns` (array)
+**Output:** `{nodes: [{file, includes, included_by, is_system, layer}], edges: [{from, to, is_system, line}], cycles: [[files]], layers: {layer_num: [files]}, success}` OR `{format: "mermaid", content: string}` OR `{format: "dot", content: string}`
+
+---
+
+### 10. get_symbol_context
+Get comprehensive context for a symbol (function/class/method) including its definition and direct dependencies.
+
+**Input:** `symbol_name` (string), `filepath` (string), `include_dependencies` (bool, default: true), `max_dependencies` (int, default: 10)
+**Output:** `{symbol: {name, type, filepath, start_line, end_line, signature, full_code, parent_class?}, dependencies?: [{name, type, filepath, start_line, end_line, signature}], required_includes?: [includes], used_symbols_count, dependencies_found}`
+
+---
+
+## Detailed Examples
+
+### tools/list
 
 Get list of all available MCP tools with their schemas.
 
-### Request
-
+**Request:**
 ```json
 {
   "jsonrpc": "2.0",
@@ -27,8 +100,7 @@ Get list of all available MCP tools with their schemas.
 }
 ```
 
-### Response
-
+**Response:**
 ```json
 {
   "jsonrpc": "2.0",
@@ -41,18 +113,9 @@ Get list of all available MCP tools with their schemas.
         "inputSchema": {
           "type": "object",
           "properties": {
-            "filepath": {
-              "type": ["string", "array"],
-              "description": "File path, array of paths, or directory"
-            },
-            "recursive": {
-              "type": "boolean",
-              "description": "Scan directories recursively (default: true)"
-            },
-            "file_patterns": {
-              "type": "array",
-              "description": "Glob patterns for file filtering"
-            }
+            "filepath": {"type": ["string", "array"]},
+            "recursive": {"type": "boolean"},
+            "file_patterns": {"type": "array"}
           },
           "required": ["filepath"]
         }
@@ -60,17 +123,32 @@ Get list of all available MCP tools with their schemas.
       {
         "name": "find_classes",
         "description": "Find all class declarations with locations",
-        "inputSchema": { "..." }
+        "inputSchema": {"..."}
       },
       {
         "name": "find_functions",
         "description": "Find all function definitions with locations",
-        "inputSchema": { "..." }
+        "inputSchema": {"..."}
       },
       {
         "name": "execute_query",
         "description": "Execute custom tree-sitter S-expression query",
-        "inputSchema": { "..." }
+        "inputSchema": {"..."}
+      },
+      {
+        "name": "extract_interface",
+        "description": "Extract function signatures and class interfaces without implementation bodies",
+        "inputSchema": {"..."}
+      },
+      {
+        "name": "find_references",
+        "description": "Find all references to a symbol with AST-based classification",
+        "inputSchema": {"..."}
+      },
+      {
+        "name": "get_file_summary",
+        "description": "Enhanced file analysis with complexity, TODO extraction, and metrics",
+        "inputSchema": {"..."}
       }
     ]
   }
@@ -79,12 +157,9 @@ Get list of all available MCP tools with their schemas.
 
 ---
 
-## parse_file
+### parse_file
 
-Parse C++/Python file(s) and return high-level metadata (class count, function count, errors, language).
-
-### Single File (C++)
-
+#### Single File
 **Request:**
 ```json
 {
@@ -94,7 +169,7 @@ Parse C++/Python file(s) and return high-level metadata (class count, function c
   "params": {
     "name": "parse_file",
     "arguments": {
-      "filepath": "src/core/TreeSitterParser.cpp"
+      "filepath": "src/main.cpp"
     }
   }
 }
@@ -106,18 +181,17 @@ Parse C++/Python file(s) and return high-level metadata (class count, function c
   "jsonrpc": "2.0",
   "id": 2,
   "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"class_count\":1,\"function_count\":5,\"include_count\":3,\"has_errors\":false,\"language\":\"cpp\",\"success\":true}"
-      }
-    ]
+    "class_count": 2,
+    "function_count": 5,
+    "include_count": 3,
+    "has_errors": false,
+    "language": "cpp",
+    "success": true
   }
 }
 ```
 
-### Single File (Python)
-
+#### Multiple Files
 **Request:**
 ```json
 {
@@ -127,7 +201,7 @@ Parse C++/Python file(s) and return high-level metadata (class count, function c
   "params": {
     "name": "parse_file",
     "arguments": {
-      "filepath": "tests/fixtures/simple_class.py"
+      "filepath": ["src/main.cpp", "src/utils.cpp"]
     }
   }
 }
@@ -139,18 +213,29 @@ Parse C++/Python file(s) and return high-level metadata (class count, function c
   "jsonrpc": "2.0",
   "id": 3,
   "result": {
-    "content": [
+    "total_files": 2,
+    "processed_files": 2,
+    "failed_files": 0,
+    "results": [
       {
-        "type": "text",
-        "text": "{\"class_count\":2,\"function_count\":7,\"include_count\":1,\"has_errors\":false,\"language\":\"python\",\"success\":true}"
+        "filepath": "src/main.cpp",
+        "class_count": 1,
+        "function_count": 3,
+        "success": true
+      },
+      {
+        "filepath": "src/utils.cpp",
+        "class_count": 0,
+        "function_count": 5,
+        "success": true
       }
-    ]
+    ],
+    "success": true
   }
 }
 ```
 
-### Multiple Files
-
+#### Directory (Recursive)
 **Request:**
 ```json
 {
@@ -160,40 +245,7 @@ Parse C++/Python file(s) and return high-level metadata (class count, function c
   "params": {
     "name": "parse_file",
     "arguments": {
-      "filepath": ["src/main.cpp", "tests/fixtures/simple_class.py"]
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 4,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"total_files\":2,\"processed_files\":2,\"failed_files\":0,\"results\":[{\"filepath\":\"src/main.cpp\",\"class_count\":0,\"function_count\":1,\"include_count\":4,\"has_errors\":false,\"language\":\"cpp\",\"success\":true},{\"filepath\":\"tests/fixtures/simple_class.py\",\"class_count\":2,\"function_count\":7,\"include_count\":1,\"has_errors\":false,\"language\":\"python\",\"success\":true}]}"
-      }
-    ]
-  }
-}
-```
-
-### Directory (Recursive)
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 5,
-  "method": "tools/call",
-  "params": {
-    "name": "parse_file",
-    "arguments": {
-      "filepath": "src/core/",
+      "filepath": "src/",
       "recursive": true,
       "file_patterns": ["*.cpp", "*.hpp"]
     }
@@ -201,29 +253,51 @@ Parse C++/Python file(s) and return high-level metadata (class count, function c
 }
 ```
 
+---
+
+### find_classes
+
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "find_classes",
+    "arguments": {
+      "filepath": "src/MyClass.cpp"
+    }
+  }
+}
+```
+
 **Response:**
 ```json
 {
   "jsonrpc": "2.0",
   "id": 5,
   "result": {
-    "content": [
+    "classes": [
       {
-        "type": "text",
-        "text": "{\"total_files\":8,\"processed_files\":8,\"failed_files\":0,\"results\":[{\"filepath\":\"src/core/ASTAnalyzer.cpp\",\"class_count\":0,\"function_count\":6,\"include_count\":2,\"has_errors\":false,\"language\":\"cpp\",\"success\":true},{\"filepath\":\"src/core/TreeSitterParser.cpp\",\"class_count\":1,\"function_count\":5,\"include_count\":3,\"has_errors\":false,\"language\":\"cpp\",\"success\":true}]}"
+        "name": "MyClass",
+        "line": 10,
+        "column": 7
+      },
+      {
+        "name": "HelperClass",
+        "line": 42,
+        "column": 7
       }
-    ]
+    ],
+    "success": true
   }
 }
 ```
 
 ---
 
-## find_classes
-
-Extract all class declarations with line/column locations.
-
-### Single File (C++)
+### find_functions
 
 **Request:**
 ```json
@@ -232,9 +306,9 @@ Extract all class declarations with line/column locations.
   "id": 6,
   "method": "tools/call",
   "params": {
-    "name": "find_classes",
+    "name": "find_functions",
     "arguments": {
-      "filepath": "tests/fixtures/template_class.cpp"
+      "filepath": "src/utils.cpp"
     }
   }
 }
@@ -246,125 +320,163 @@ Extract all class declarations with line/column locations.
   "jsonrpc": "2.0",
   "id": 6,
   "result": {
-    "content": [
+    "functions": [
       {
-        "type": "text",
-        "text": "{\"classes\":[{\"name\":\"Container\",\"line\":4,\"column\":7},{\"name\":\"Stack\",\"line\":12,\"column\":7}],\"success\":true}"
-      }
-    ]
-  }
-}
-```
-
-### Single File (Python)
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 7,
-  "method": "tools/call",
-  "params": {
-    "name": "find_classes",
-    "arguments": {
-      "filepath": "tests/fixtures/simple_class.py"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 7,
-  "result": {
-    "content": [
+        "name": "calculate",
+        "line": 15,
+        "column": 5
+      },
       {
-        "type": "text",
-        "text": "{\"classes\":[{\"name\":\"Calculator\",\"line\":4,\"column\":6},{\"name\":\"ScientificCalculator\",\"line\":22,\"column\":6}],\"success\":true}"
+        "name": "process",
+        "line": 30,
+        "column": 5
       }
-    ]
-  }
-}
-```
-
-### Multiple Files
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 8,
-  "method": "tools/call",
-  "params": {
-    "name": "find_classes",
-    "arguments": {
-      "filepath": ["src/core/TreeSitterParser.hpp", "tests/fixtures/simple_class.py"]
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 8,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"total_files\":2,\"results\":[{\"filepath\":\"src/core/TreeSitterParser.hpp\",\"classes\":[{\"name\":\"TreeSitterParser\",\"line\":10,\"column\":7}],\"success\":true},{\"filepath\":\"tests/fixtures/simple_class.py\",\"classes\":[{\"name\":\"Calculator\",\"line\":4,\"column\":6},{\"name\":\"ScientificCalculator\",\"line\":22,\"column\":6}],\"success\":true}]}"
-      }
-    ]
-  }
-}
-```
-
-### Directory (Python only)
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 9,
-  "method": "tools/call",
-  "params": {
-    "name": "find_classes",
-    "arguments": {
-      "filepath": "tests/fixtures/",
-      "recursive": false,
-      "file_patterns": ["*.py"]
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 9,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"total_files\":4,\"results\":[{\"filepath\":\"tests/fixtures/async_example.py\",\"classes\":[{\"name\":\"AsyncDataFetcher\",\"line\":26,\"column\":6}],\"success\":true},{\"filepath\":\"tests/fixtures/simple_class.py\",\"classes\":[{\"name\":\"Calculator\",\"line\":4,\"column\":6},{\"name\":\"ScientificCalculator\",\"line\":22,\"column\":6}],\"success\":true},{\"filepath\":\"tests/fixtures/with_decorators.py\",\"classes\":[{\"name\":\"MyClass\",\"line\":30,\"column\":6}],\"success\":true},{\"filepath\":\"tests/fixtures/with_imports.py\",\"classes\":[],\"success\":true}]}"
-      }
-    ]
+    ],
+    "success": true
   }
 }
 ```
 
 ---
 
-## find_functions
+### execute_query
 
-Extract all function definitions with line/column locations.
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_query",
+    "arguments": {
+      "filepath": "src/Base.cpp",
+      "query": "(class_specifier name: (type_identifier) @class_name)"
+    }
+  }
+}
+```
 
-### Single File (C++)
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "matches": [
+      {
+        "capture_name": "class_name",
+        "text": "Base",
+        "line": 5,
+        "column": 7
+      }
+    ],
+    "success": true
+  }
+}
+```
 
+---
+
+### extract_interface
+
+#### JSON Format (C++)
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "tools/call",
+  "params": {
+    "name": "extract_interface",
+    "arguments": {
+      "filepath": "src/MyClass.cpp",
+      "output_format": "json",
+      "include_private": false,
+      "include_comments": true
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "result": {
+    "filepath": "src/MyClass.cpp",
+    "language": "cpp",
+    "functions": [
+      {
+        "signature": "int calculate(int x, int y)",
+        "line": 42,
+        "comment": "Calculate sum of two integers"
+      },
+      {
+        "signature": "void process()",
+        "line": 55
+      }
+    ],
+    "classes": [
+      {
+        "name": "MyClass",
+        "line": 10,
+        "methods": [
+          {
+            "signature": "void doWork()",
+            "line": 15,
+            "access": "public"
+          }
+        ],
+        "members": [
+          {
+            "name": "value_",
+            "type": "int",
+            "line": 20,
+            "access": "private"
+          }
+        ]
+      }
+    ],
+    "success": true
+  }
+}
+```
+
+#### Header Format (C++)
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "tools/call",
+  "params": {
+    "name": "extract_interface",
+    "arguments": {
+      "filepath": "src/MyClass.cpp",
+      "output_format": "header",
+      "include_private": false
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "result": {
+    "filepath": "src/MyClass.cpp",
+    "format": "header",
+    "content": "#pragma once\n\nclass MyClass {\npublic:\n    void doWork();\n    int calculate(int x, int y);\n};\n\nvoid process();\n",
+    "success": true
+  }
+}
+```
+
+#### Markdown Format
 **Request:**
 ```json
 {
@@ -372,9 +484,10 @@ Extract all function definitions with line/column locations.
   "id": 10,
   "method": "tools/call",
   "params": {
-    "name": "find_functions",
+    "name": "extract_interface",
     "arguments": {
-      "filepath": "src/core/TreeSitterParser.cpp"
+      "filepath": "src/MyClass.cpp",
+      "output_format": "markdown"
     }
   }
 }
@@ -386,18 +499,19 @@ Extract all function definitions with line/column locations.
   "jsonrpc": "2.0",
   "id": 10,
   "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"functions\":[{\"name\":\"TreeSitterParser\",\"line\":8,\"column\":0},{\"name\":\"~TreeSitterParser\",\"line\":21,\"column\":0},{\"name\":\"parse_string\",\"line\":27,\"column\":13},{\"name\":\"parse_file\",\"line\":37,\"column\":13},{\"name\":\"node_text\",\"line\":54,\"column\":17}],\"success\":true}"
-      }
-    ]
+    "filepath": "src/MyClass.cpp",
+    "format": "markdown",
+    "content": "# API Reference: src/MyClass.cpp\n\n## Classes\n\n### MyClass\n\n**Public Methods:**\n- `void doWork()`\n- `int calculate(int x, int y)`\n\n## Functions\n\n- `void process()`\n",
+    "success": true
   }
 }
 ```
 
-### Single File (Python with async)
+---
 
+### find_references
+
+#### Find Class References (C++)
 **Request:**
 ```json
 {
@@ -405,44 +519,76 @@ Extract all function definitions with line/column locations.
   "id": 11,
   "method": "tools/call",
   "params": {
-    "name": "find_functions",
+    "name": "find_references",
     "arguments": {
-      "filepath": "tests/fixtures/async_example.py"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 11,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"functions\":[{\"name\":\"fetch_data\",\"line\":7,\"column\":10},{\"name\":\"process_item\",\"line\":13,\"column\":10},{\"name\":\"batch_process\",\"line\":19,\"column\":10},{\"name\":\"__init__\",\"line\":29,\"column\":4},{\"name\":\"get\",\"line\":34,\"column\":10},{\"name\":\"get_multiple\",\"line\":44,\"column\":10},{\"name\":\"__aenter__\",\"line\":49,\"column\":10},{\"name\":\"__aexit__\",\"line\":53,\"column\":10},{\"name\":\"main\",\"line\":58,\"column\":10}],\"success\":true}"
-      }
-    ]
-  }
-}
-```
-
-### Directory (Recursive)
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 12,
-  "method": "tools/call",
-  "params": {
-    "name": "find_functions",
-    "arguments": {
-      "filepath": "src/mcp/",
+      "symbol": "MyClass",
+      "filepath": "src/",
       "recursive": true,
-      "file_patterns": ["*.cpp"]
+      "include_context": true
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "result": {
+    "symbol": "MyClass",
+    "total_references": 5,
+    "files_searched": 12,
+    "files_processed": 12,
+    "files_failed": 0,
+    "references": [
+      {
+        "filepath": "src/main.cpp",
+        "line": 10,
+        "column": 5,
+        "type": "definition",
+        "context": "class MyClass {",
+        "parent_scope": "",
+        "node_type": "type_identifier"
+      },
+      {
+        "filepath": "src/main.cpp",
+        "line": 42,
+        "column": 5,
+        "type": "call",
+        "context": "MyClass obj;",
+        "parent_scope": "main",
+        "node_type": "identifier"
+      },
+      {
+        "filepath": "src/utils.cpp",
+        "line": 15,
+        "column": 20,
+        "type": "type_usage",
+        "context": "std::unique_ptr<MyClass> ptr;",
+        "parent_scope": "createInstance",
+        "node_type": "type_identifier"
+      }
+    ],
+    "success": true
+  }
+}
+```
+
+#### Filter by Reference Type
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
+  "method": "tools/call",
+  "params": {
+    "name": "find_references",
+    "arguments": {
+      "symbol": "calculate",
+      "filepath": "src/",
+      "reference_types": ["call"],
+      "include_context": true
     }
   }
 }
@@ -454,24 +600,29 @@ Extract all function definitions with line/column locations.
   "jsonrpc": "2.0",
   "id": 12,
   "result": {
-    "content": [
+    "symbol": "calculate",
+    "total_references": 3,
+    "references": [
       {
-        "type": "text",
-        "text": "{\"total_files\":3,\"results\":[{\"filepath\":\"src/mcp/MCPServer.cpp\",\"functions\":[{\"name\":\"MCPServer\",\"line\":10,\"column\":0},{\"name\":\"register_tool\",\"line\":18,\"column\":5},{\"name\":\"handle_request\",\"line\":25,\"column\":5}],\"success\":true}]}"
+        "filepath": "src/main.cpp",
+        "line": 50,
+        "column": 15,
+        "type": "call",
+        "context": "int result = calculate(10, 20);",
+        "parent_scope": "main",
+        "node_type": "identifier"
       }
-    ]
+    ],
+    "success": true
   }
 }
 ```
 
 ---
 
-## execute_query
+### get_file_summary
 
-Run custom tree-sitter S-expression query on file(s).
-
-### C++ - Find Virtual Functions
-
+#### Single File with All Features
 **Request:**
 ```json
 {
@@ -479,10 +630,12 @@ Run custom tree-sitter S-expression query on file(s).
   "id": 13,
   "method": "tools/call",
   "params": {
-    "name": "execute_query",
+    "name": "get_file_summary",
     "arguments": {
-      "filepath": "tests/fixtures/virtual_functions.cpp",
-      "query": "(function_definition (virtual_function_specifier) declarator: (function_declarator declarator: (field_identifier) @virtual_func))"
+      "filepath": "src/Calculator.cpp",
+      "include_complexity": true,
+      "include_comments": true,
+      "include_docstrings": true
     }
   }
 }
@@ -494,18 +647,82 @@ Run custom tree-sitter S-expression query on file(s).
   "jsonrpc": "2.0",
   "id": 13,
   "result": {
-    "content": [
+    "filepath": "src/Calculator.cpp",
+    "language": "cpp",
+    "success": true,
+    "metrics": {
+      "total_lines": 150,
+      "code_lines": 95,
+      "comment_lines": 30,
+      "blank_lines": 25
+    },
+    "functions": [
       {
-        "type": "text",
-        "text": "{\"matches\":[{\"capture_name\":\"virtual_func\",\"text\":\"draw\",\"line\":5,\"column\":17},{\"capture_name\":\"virtual_func\",\"text\":\"area\",\"line\":6,\"column\":18}],\"success\":true}"
+        "name": "add",
+        "return_type": "int",
+        "line": 20,
+        "complexity": 1,
+        "parameters": [
+          {"type": "int", "name": "a"},
+          {"type": "int", "name": "b"}
+        ],
+        "docstring": "Add two integers and return the result",
+        "is_virtual": false,
+        "is_static": false
+      },
+      {
+        "name": "divide",
+        "return_type": "double",
+        "line": 45,
+        "complexity": 3,
+        "parameters": [
+          {"type": "double", "name": "numerator"},
+          {"type": "double", "name": "denominator"}
+        ],
+        "docstring": "Divide two numbers with error checking",
+        "is_virtual": false,
+        "is_static": false
+      }
+    ],
+    "function_count": 2,
+    "classes": [
+      {
+        "name": "Calculator",
+        "line": 10
+      }
+    ],
+    "class_count": 1,
+    "imports": [
+      {
+        "path": "iostream",
+        "line": 1,
+        "is_system": true
+      },
+      {
+        "path": "Calculator.hpp",
+        "line": 2,
+        "is_system": false
+      }
+    ],
+    "comment_markers": [
+      {
+        "type": "TODO",
+        "text": "Add overflow checking",
+        "line": 25,
+        "context": "// TODO: Add overflow checking"
+      },
+      {
+        "type": "FIXME",
+        "text": "Division by zero handling is incomplete",
+        "line": 50,
+        "context": "// FIXME: Division by zero handling is incomplete"
       }
     ]
   }
 }
 ```
 
-### C++ - Find Template Classes
-
+#### Python File
 **Request:**
 ```json
 {
@@ -513,10 +730,11 @@ Run custom tree-sitter S-expression query on file(s).
   "id": 14,
   "method": "tools/call",
   "params": {
-    "name": "execute_query",
+    "name": "get_file_summary",
     "arguments": {
-      "filepath": "tests/fixtures/template_class.cpp",
-      "query": "(template_declaration (class_specifier name: (type_identifier) @template_class))"
+      "filepath": "utils.py",
+      "include_complexity": true,
+      "include_docstrings": true
     }
   }
 }
@@ -528,18 +746,56 @@ Run custom tree-sitter S-expression query on file(s).
   "jsonrpc": "2.0",
   "id": 14,
   "result": {
-    "content": [
+    "filepath": "utils.py",
+    "language": "python",
+    "success": true,
+    "metrics": {
+      "total_lines": 80,
+      "code_lines": 55,
+      "comment_lines": 15,
+      "blank_lines": 10
+    },
+    "functions": [
       {
-        "type": "text",
-        "text": "{\"matches\":[{\"capture_name\":\"template_class\",\"text\":\"Container\",\"line\":4,\"column\":7},{\"capture_name\":\"template_class\",\"text\":\"Stack\",\"line\":12,\"column\":7}],\"success\":true}"
+        "name": "process_data",
+        "return_type": "",
+        "line": 10,
+        "complexity": 4,
+        "parameters": [
+          {"type": "", "name": "data"},
+          {"type": "", "name": "options"}
+        ],
+        "docstring": "Process data with given options\n\nArgs:\n    data: Input data\n    options: Processing options",
+        "is_async": false
+      },
+      {
+        "name": "fetch_async",
+        "return_type": "",
+        "line": 45,
+        "complexity": 2,
+        "parameters": [
+          {"type": "", "name": "url"}
+        ],
+        "docstring": "Fetch data asynchronously from URL",
+        "is_async": true
       }
-    ]
+    ],
+    "function_count": 2,
+    "classes": [],
+    "class_count": 0,
+    "imports": [
+      {
+        "path": "asyncio",
+        "line": 1,
+        "module": "asyncio"
+      }
+    ],
+    "comment_markers": []
   }
 }
 ```
 
-### C++ - Find Includes
-
+#### Multiple Files
 **Request:**
 ```json
 {
@@ -547,10 +803,10 @@ Run custom tree-sitter S-expression query on file(s).
   "id": 15,
   "method": "tools/call",
   "params": {
-    "name": "execute_query",
+    "name": "get_file_summary",
     "arguments": {
-      "filepath": "src/core/TreeSitterParser.cpp",
-      "query": "(preproc_include path: (_) @include_path)"
+      "filepath": ["src/main.cpp", "src/utils.cpp"],
+      "include_complexity": true
     }
   }
 }
@@ -562,148 +818,28 @@ Run custom tree-sitter S-expression query on file(s).
   "jsonrpc": "2.0",
   "id": 15,
   "result": {
-    "content": [
+    "total_files": 2,
+    "processed_files": 2,
+    "failed_files": 0,
+    "results": [
       {
-        "type": "text",
-        "text": "{\"matches\":[{\"capture_name\":\"include_path\",\"text\":\"\\\"core/TreeSitterParser.hpp\\\"\",\"line\":1,\"column\":9},{\"capture_name\":\"include_path\",\"text\":\"<spdlog/spdlog.h>\",\"line\":2,\"column\":9},{\"capture_name\":\"include_path\",\"text\":\"<fstream>\",\"line\":3,\"column\":9}],\"success\":true}"
-      }
-    ]
-  }
-}
-```
-
-### Python - Find Decorators
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 16,
-  "method": "tools/call",
-  "params": {
-    "name": "execute_query",
-    "arguments": {
-      "filepath": "tests/fixtures/with_decorators.py",
-      "query": "(decorator) @decorator"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 16,
-  "result": {
-    "content": [
+        "filepath": "src/main.cpp",
+        "language": "cpp",
+        "metrics": {"total_lines": 100, "code_lines": 75, "comment_lines": 15, "blank_lines": 10},
+        "functions": [...],
+        "classes": [...],
+        "success": true
+      },
       {
-        "type": "text",
-        "text": "{\"matches\":[{\"capture_name\":\"decorator\",\"text\":\"@timer\",\"line\":4,\"column\":0},{\"capture_name\":\"decorator\",\"text\":\"@wraps(func)\",\"line\":7,\"column\":4},{\"capture_name\":\"decorator\",\"text\":\"@retry(max_attempts=3)\",\"line\":13,\"column\":0},{\"capture_name\":\"decorator\",\"text\":\"@staticmethod\",\"line\":33,\"column\":4},{\"capture_name\":\"decorator\",\"text\":\"@classmethod\",\"line\":38,\"column\":4},{\"capture_name\":\"decorator\",\"text\":\"@property\",\"line\":44,\"column\":4}],\"success\":true}"
+        "filepath": "src/utils.cpp",
+        "language": "cpp",
+        "metrics": {"total_lines": 50, "code_lines": 35, "comment_lines": 10, "blank_lines": 5},
+        "functions": [...],
+        "classes": [...],
+        "success": true
       }
-    ]
-  }
-}
-```
-
-### Python - Find Async Functions
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 17,
-  "method": "tools/call",
-  "params": {
-    "name": "execute_query",
-    "arguments": {
-      "filepath": "tests/fixtures/async_example.py",
-      "query": "(function_definition \"async\" @async_keyword name: (identifier) @async_func_name)"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 17,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"matches\":[{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":7,\"column\":0},{\"capture_name\":\"async_func_name\",\"text\":\"fetch_data\",\"line\":7,\"column\":10},{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":13,\"column\":0},{\"capture_name\":\"async_func_name\",\"text\":\"process_item\",\"line\":13,\"column\":10},{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":19,\"column\":0},{\"capture_name\":\"async_func_name\",\"text\":\"batch_process\",\"line\":19,\"column\":10},{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":34,\"column\":4},{\"capture_name\":\"async_func_name\",\"text\":\"get\",\"line\":34,\"column\":10},{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":44,\"column\":4},{\"capture_name\":\"async_func_name\",\"text\":\"get_multiple\",\"line\":44,\"column\":10},{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":49,\"column\":4},{\"capture_name\":\"async_func_name\",\"text\":\"__aenter__\",\"line\":49,\"column\":10},{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":53,\"column\":4},{\"capture_name\":\"async_func_name\",\"text\":\"__aexit__\",\"line\":53,\"column\":10},{\"capture_name\":\"async_keyword\",\"text\":\"async\",\"line\":58,\"column\":0},{\"capture_name\":\"async_func_name\",\"text\":\"main\",\"line\":58,\"column\":10}],\"success\":true}"
-      }
-    ]
-  }
-}
-```
-
-### Python - Find Imports
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 18,
-  "method": "tools/call",
-  "params": {
-    "name": "execute_query",
-    "arguments": {
-      "filepath": "tests/fixtures/with_imports.py",
-      "query": "[(import_statement) @import (import_from_statement) @import_from]"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 18,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"matches\":[{\"capture_name\":\"import\",\"text\":\"import os\",\"line\":3,\"column\":0},{\"capture_name\":\"import\",\"text\":\"import sys\",\"line\":4,\"column\":0},{\"capture_name\":\"import_from\",\"text\":\"from pathlib import Path\",\"line\":5,\"column\":0},{\"capture_name\":\"import_from\",\"text\":\"from typing import List, Dict, Optional, Union\",\"line\":6,\"column\":0},{\"capture_name\":\"import_from\",\"text\":\"from collections import defaultdict, Counter\",\"line\":7,\"column\":0},{\"capture_name\":\"import\",\"text\":\"import json as js\",\"line\":8,\"column\":0},{\"capture_name\":\"import_from\",\"text\":\"from datetime import datetime, timedelta\",\"line\":9,\"column\":0}],\"success\":true}"
-      }
-    ]
-  }
-}
-```
-
-### Multiple Files with Custom Query
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 19,
-  "method": "tools/call",
-  "params": {
-    "name": "execute_query",
-    "arguments": {
-      "filepath": ["tests/fixtures/simple_class.py", "tests/fixtures/async_example.py"],
-      "query": "(class_definition name: (identifier) @class_name)"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 19,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"total_files\":2,\"results\":[{\"filepath\":\"tests/fixtures/simple_class.py\",\"matches\":[{\"capture_name\":\"class_name\",\"text\":\"Calculator\",\"line\":4,\"column\":6},{\"capture_name\":\"class_name\",\"text\":\"ScientificCalculator\",\"line\":22,\"column\":6}],\"success\":true},{\"filepath\":\"tests/fixtures/async_example.py\",\"matches\":[{\"capture_name\":\"class_name\",\"text\":\"AsyncDataFetcher\",\"line\":26,\"column\":6}],\"success\":true}]}"
-      }
-    ]
+    ],
+    "success": true
   }
 }
 ```
@@ -713,40 +849,282 @@ Run custom tree-sitter S-expression query on file(s).
 ## Error Responses
 
 ### File Not Found
-
-**Request:**
 ```json
 {
   "jsonrpc": "2.0",
-  "id": 20,
-  "method": "tools/call",
-  "params": {
-    "name": "parse_file",
-    "arguments": {
-      "filepath": "nonexistent.cpp"
-    }
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 20,
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "{\"success\":false,\"error\":\"Failed to open file: nonexistent.cpp\"}"
-      }
-    ],
-    "isError": true
+  "id": 100,
+  "error": {
+    "code": -32602,
+    "message": "Invalid params",
+    "data": "Failed to read file: src/nonexistent.cpp"
   }
 }
 ```
 
 ### Invalid Query Syntax
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 101,
+  "error": {
+    "code": -32602,
+    "message": "Invalid params",
+    "data": "Failed to compile query: syntax error at line 1"
+  }
+}
+```
+
+### Missing Required Parameter
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 102,
+  "error": {
+    "code": -32602,
+    "message": "Invalid params",
+    "data": "Missing required parameter: filepath"
+  }
+}
+```
+
+---
+
+### get_class_hierarchy
+
+#### Analyze Full Hierarchy
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "method": "tools/call",
+  "params": {
+    "name": "get_class_hierarchy",
+    "arguments": {
+      "filepath": "src/",
+      "show_methods": true,
+      "recursive": true
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "result": {
+    "total_files": 15,
+    "files_processed": 15,
+    "files_failed": 0,
+    "total_classes": 8,
+    "classes": [
+      {
+        "name": "Base",
+        "line": 10,
+        "file": "src/base.hpp",
+        "base_classes": [],
+        "is_abstract": true,
+        "virtual_methods": [
+          {
+            "name": "process",
+            "signature": "virtual void process() = 0",
+            "line": 15,
+            "is_pure_virtual": true,
+            "is_override": false,
+            "is_final": false,
+            "access": "public"
+          }
+        ]
+      },
+      {
+        "name": "Derived",
+        "line": 25,
+        "file": "src/derived.hpp",
+        "base_classes": ["Base"],
+        "is_abstract": false,
+        "virtual_methods": [
+          {
+            "name": "process",
+            "signature": "void process() override",
+            "line": 30,
+            "is_pure_virtual": false,
+            "is_override": true,
+            "is_final": false,
+            "access": "public"
+          }
+        ]
+      }
+    ],
+    "hierarchy": {
+      "Base": {
+        "children": ["Derived"],
+        "parents": [],
+        "is_abstract": true
+      },
+      "Derived": {
+        "children": [],
+        "parents": ["Base"],
+        "is_abstract": false
+      }
+    },
+    "success": true
+  }
+}
+```
+
+#### Focus on Specific Class
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "method": "tools/call",
+  "params": {
+    "name": "get_class_hierarchy",
+    "arguments": {
+      "filepath": "src/",
+      "class_name": "Base",
+      "max_depth": 2
+    }
+  }
+}
+```
+
+---
+
+### get_dependency_graph
+
+#### JSON Format with Cycle Detection
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "method": "tools/call",
+  "params": {
+    "name": "get_dependency_graph",
+    "arguments": {
+      "filepath": "src/",
+      "show_system_includes": false,
+      "detect_cycles": true,
+      "output_format": "json"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 18,
+  "result": {
+    "total_files": 20,
+    "files_failed": 0,
+    "nodes": [
+      {
+        "file": "main.cpp",
+        "includes": ["utils.hpp", "config.hpp"],
+        "included_by": [],
+        "is_system": false,
+        "layer": 1
+      },
+      {
+        "file": "utils.hpp",
+        "includes": ["types.hpp"],
+        "included_by": ["main.cpp", "processor.cpp"],
+        "is_system": false,
+        "layer": 0
+      }
+    ],
+    "edges": [
+      {"from": "main.cpp", "to": "utils.hpp", "is_system": false, "line": 3},
+      {"from": "main.cpp", "to": "config.hpp", "is_system": false, "line": 4}
+    ],
+    "cycles": [
+      ["a.hpp", "b.hpp", "c.hpp", "a.hpp"]
+    ],
+    "layers": {
+      "0": ["types.hpp", "config.hpp"],
+      "1": ["utils.hpp"],
+      "2": ["main.cpp"]
+    },
+    "success": true
+  }
+}
+```
+
+#### Mermaid Diagram Format
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "method": "tools/call",
+  "params": {
+    "name": "get_dependency_graph",
+    "arguments": {
+      "filepath": ["src/main.cpp", "src/utils.cpp"],
+      "output_format": "mermaid"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 19,
+  "result": {
+    "format": "mermaid",
+    "content": "graph TD\n    N0[\"main.cpp\"]\n    N1[\"utils.hpp\"]\n    N2[\"config.hpp\"]\n    N0 --> N1\n    N0 --> N2\n    N1 --> N2\n",
+    "total_files": 2,
+    "total_dependencies": 3,
+    "cycles_found": 0,
+    "success": true
+  }
+}
+```
+
+#### DOT Format for Graphviz
+**Request:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "method": "tools/call",
+  "params": {
+    "name": "get_dependency_graph",
+    "arguments": {
+      "filepath": "src/",
+      "output_format": "dot",
+      "show_system_includes": true
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 20,
+  "result": {
+    "format": "dot",
+    "content": "digraph dependencies {\n    rankdir=LR;\n    node [shape=box];\n\n    N0 [label=\"main.cpp\"];\n    N1 [label=\"utils.hpp\"];\n    N0 -> N1;\n}\n",
+    "success": true
+  }
+}
+```
+
+---
+
+### get_symbol_context
+
+Get comprehensive context for a symbol including its definition and direct dependencies.
 
 **Request:**
 ```json
@@ -755,10 +1133,12 @@ Run custom tree-sitter S-expression query on file(s).
   "id": 21,
   "method": "tools/call",
   "params": {
-    "name": "execute_query",
+    "name": "get_symbol_context",
     "arguments": {
-      "filepath": "src/main.cpp",
-      "query": "(invalid query syntax"
+      "symbol_name": "Database::connect",
+      "filepath": "src/database.cpp",
+      "include_dependencies": true,
+      "max_dependencies": 10
     }
   }
 }
@@ -770,72 +1150,59 @@ Run custom tree-sitter S-expression query on file(s).
   "jsonrpc": "2.0",
   "id": 21,
   "result": {
-    "content": [
+    "symbol": {
+      "name": "Database::connect",
+      "type": "method",
+      "filepath": "src/database.cpp",
+      "start_line": 45,
+      "end_line": 52,
+      "signature": "bool Database::connect(const std::string& host);",
+      "full_code": "bool Database::connect(const std::string& host) {\n    conn_ = new Connection(host);\n    return conn_->isValid();\n}",
+      "parent_class": "Database"
+    },
+    "dependencies": [
       {
-        "type": "text",
-        "text": "{\"success\":false,\"error\":\"Failed to compile query\"}"
+        "name": "Connection",
+        "type": "class",
+        "filepath": "src/database.cpp",
+        "start_line": 10,
+        "end_line": 15,
+        "signature": "class Connection;"
       }
     ],
-    "isError": true
-  }
-}
-```
-
-### Unknown Tool
-
-**Request:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 22,
-  "method": "tools/call",
-  "params": {
-    "name": "unknown_tool",
-    "arguments": {}
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 22,
-  "error": {
-    "code": -32601,
-    "message": "Tool not found: unknown_tool"
+    "required_includes": [
+      "#include <string>",
+      "#include \"connection.hpp\""
+    ],
+    "used_symbols_count": 3,
+    "dependencies_found": 1
   }
 }
 ```
 
 ---
 
-## Command-Line Testing
+## Quick Reference
 
-You can test the server directly from the command line:
-
-```bash
-# List available tools
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | tree-sitter-mcp --log-level error
-
-# Parse a single file
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"parse_file","arguments":{"filepath":"src/main.cpp"}}}' | tree-sitter-mcp --log-level error
-
-# Find classes in directory
-echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_classes","arguments":{"filepath":"src/","recursive":true,"file_patterns":["*.cpp","*.hpp"]}}}' | tree-sitter-mcp --log-level error
-
-# Execute custom query
-echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"execute_query","arguments":{"filepath":"src/core/TreeSitterParser.hpp","query":"(class_specifier name: (type_identifier) @class_name)"}}}' | tree-sitter-mcp --log-level error
-```
+| Tool | Primary Use Case | Key Output |
+|------|------------------|------------|
+| `parse_file` | Quick metadata check | Class/function counts, syntax errors |
+| `find_classes` | List all classes | Class names with locations |
+| `find_functions` | List all functions | Function names with locations |
+| `execute_query` | Custom AST queries | S-expression query matches |
+| `extract_interface` | Generate API docs | Signatures without bodies (JSON/header/markdown) |
+| `find_references` | Symbol usage analysis | All references with type classification |
+| `get_file_summary` | Comprehensive analysis | Complexity, TODOs, metrics, full signatures |
+| `get_class_hierarchy` | OOP structure analysis | Inheritance trees, virtual methods, abstract classes |
+| `get_dependency_graph` | Architecture visualization | Include graphs, cycles, build order, Mermaid/DOT diagrams |
+| `get_symbol_context` | Context extraction for AI | Symbol definition + dependencies for minimal complete code |
 
 ---
 
-## Notes
+## Common Use Cases
 
-- All responses are JSON-RPC 2.0 formatted
-- Content is returned as an array with `type: "text"` objects
-- Language is auto-detected from file extension (`.cpp`/`.hpp` → `cpp`, `.py` → `python`)
-- Batch operations support arrays of files or directory scanning
-- Line/column numbers are 1-indexed
-- Recursive directory scanning is enabled by default
-- Default file patterns: `["*.cpp", "*.hpp", "*.h", "*.cc", "*.cxx", "*.py"]`
+1. **Code Quality Check**: Use `get_file_summary` with `include_complexity=true` and `include_comments=true` to find complex functions and maintenance tasks
+2. **API Documentation**: Use `extract_interface` with `output_format=markdown` to generate API docs
+3. **Refactoring Support**: Use `find_references` to safely rename symbols
+4. **Architecture Analysis**: Use `find_classes` + `find_functions` across directories to understand codebase structure
+5. **Maintenance Planning**: Use `get_file_summary` with `include_comments=true` to extract all TODO/FIXME markers
