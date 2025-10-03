@@ -16,7 +16,7 @@ namespace ts_mcp {
 ToolInfo GetSymbolContextTool::get_info() {
     return ToolInfo{
         .name = "get_symbol_context",
-        .description = "Get comprehensive context for a symbol (function/class/method) including its definition and direct dependencies",
+        .description = "Get comprehensive context for a symbol (function/class/method) including definition, dependencies, and usage examples",
         .input_schema = {
             {"type", "object"},
             {"properties", {
@@ -35,6 +35,23 @@ ToolInfo GetSymbolContextTool::get_info() {
                 {"max_dependencies", {
                     {"type", "integer"},
                     {"description", "Maximum number of dependencies to include (default: 10)"}
+                }},
+                {"resolve_external_types", {
+                    {"type", "boolean"},
+                    {"description", "Search for type definitions in other files (default: false)"}
+                }},
+                {"include_usage_examples", {
+                    {"type", "boolean"},
+                    {"description", "Find and include usage examples from codebase (default: false)"}
+                }},
+                {"context_lines", {
+                    {"type", "integer"},
+                    {"description", "Number of context lines around usage examples (default: 3)"}
+                }},
+                {"search_paths", {
+                    {"type", "array"},
+                    {"items", {{"type", "string"}}},
+                    {"description", "Paths to search for external type definitions (auto-detected if not specified)"}
                 }}
             }},
             {"required", json::array({"symbol_name", "filepath"})}
@@ -48,7 +65,42 @@ json GetSymbolContextTool::execute(const json& args) {
     bool include_deps = args.value("include_dependencies", true);
     int max_deps = args.value("max_dependencies", 10);
 
-    spdlog::info("Getting context for symbol '{}' in {}", symbol_name, filepath);
+    // NEW PARAMETERS
+    bool resolve_external_types = args.value("resolve_external_types", false);
+    bool include_usage_examples = args.value("include_usage_examples", false);
+    int context_lines = args.value("context_lines", 3);
+
+    // Default search paths: try to infer from filepath
+    std::vector<std::string> search_paths;
+    if (args.contains("search_paths") && args["search_paths"].is_array()) {
+        for (const auto& path : args["search_paths"]) {
+            search_paths.push_back(path.get<std::string>());
+        }
+    } else if (resolve_external_types) {
+        // Auto-detect search paths from filepath
+        std::filesystem::path file_path(filepath);
+        std::string base = file_path.parent_path().string();
+
+        // Go up to find project root
+        while (!base.empty() && base != "/") {
+            if (std::filesystem::exists(base + "/src") ||
+                std::filesystem::exists(base + "/include")) {
+                search_paths.push_back(base + "/include");
+                search_paths.push_back(base + "/src");
+                break;
+            }
+            file_path = file_path.parent_path();
+            base = file_path.string();
+        }
+
+        // Fallback: use parent directory
+        if (search_paths.empty()) {
+            search_paths.push_back(std::filesystem::path(filepath).parent_path().string());
+        }
+    }
+
+    spdlog::info("Getting context for symbol '{}' in {} (resolve_external={}, usage_examples={})",
+                 symbol_name, filepath, resolve_external_types, include_usage_examples);
 
     // Determine language
     Language language = LanguageUtils::detect_from_extension(std::string_view(filepath));
@@ -103,9 +155,16 @@ json GetSymbolContextTool::execute(const json& args) {
             definition, source, location->start_byte, location->end_byte
         );
 
-        // Stage 4: Enrich context
+        // Stage 4: Enrich context (WITH NEW PARAMETERS)
         EnrichedContext enriched = enrich_context(
-            definition, used, filepath, language
+            definition,
+            used,
+            filepath,
+            language,
+            resolve_external_types,
+            include_usage_examples,
+            context_lines,
+            search_paths
         );
 
         // Limit dependencies
@@ -114,14 +173,21 @@ json GetSymbolContextTool::execute(const json& args) {
         json deps_array = json::array();
         for (int i = 0; i < dep_count; i++) {
             const auto& dep = enriched.dependencies[i];
-            deps_array.push_back({
+            json dep_json = {
                 {"name", dep.name},
                 {"type", dep.type},
                 {"filepath", dep.filepath},
                 {"start_line", dep.start_line},
                 {"end_line", dep.end_line},
                 {"signature", dep.signature}
-            });
+            };
+
+            // Include full definition for external types
+            if (resolve_external_types && !dep.full_code.empty()) {
+                dep_json["definition"] = dep.full_code;
+            }
+
+            deps_array.push_back(dep_json);
         }
         result["dependencies"] = deps_array;
 
@@ -129,8 +195,23 @@ json GetSymbolContextTool::execute(const json& args) {
             result["required_includes"] = enriched.includes;
         }
 
+        // NEW: Add usage examples
+        if (!enriched.usage_examples.empty()) {
+            json examples_array = json::array();
+            for (const auto& example : enriched.usage_examples) {
+                examples_array.push_back({
+                    {"filepath", example.filepath},
+                    {"line", example.line},
+                    {"context", example.context_lines},
+                    {"parent_scope", example.parent_scope}
+                });
+            }
+            result["usage_examples"] = examples_array;
+        }
+
         result["used_symbols_count"] = used.size();
         result["dependencies_found"] = enriched.dependencies.size();
+        result["usage_examples_found"] = enriched.usage_examples.size();
     }
 
     return result;
@@ -454,7 +535,11 @@ GetSymbolContextTool::enrich_context(
     const SymbolDefinition& target,
     const std::vector<UsedSymbol>& used_symbols,
     const std::string& filepath,
-    Language language
+    Language language,
+    bool resolve_external_types,
+    bool include_usage_examples,
+    int context_lines,
+    const std::vector<std::string>& search_paths
 ) {
     EnrichedContext enriched;
     enriched.target = target;
@@ -462,16 +547,58 @@ GetSymbolContextTool::enrich_context(
     // Extract includes from file
     enriched.includes = extract_includes(filepath, language);
 
-    // Try to find each used symbol in current file
+    // Try to find each used symbol
     for (const auto& used : used_symbols) {
+        if (used.type != "type") continue;  // Only resolve types
+
+        // 1. Try current file first
         auto def = find_symbol_in_file(used.name, filepath, language);
+
+        // 2. If not found and external resolution enabled - search in other files
+        if (!def && resolve_external_types && !search_paths.empty()) {
+            spdlog::debug("Symbol '{}' not found in current file, searching externally", used.name);
+            def = find_in_search_paths(used.name, search_paths);
+        }
+
         if (def) {
             enriched.dependencies.push_back(*def);
         }
     }
 
-    spdlog::debug("Enriched context: {} includes, {} dependencies found",
-                  enriched.includes.size(), enriched.dependencies.size());
+    // 3. Find usage examples if requested
+    if (include_usage_examples) {
+        // Extract base path from filepath (go up to project root)
+        std::filesystem::path file_path(filepath);
+        std::string base_path = file_path.parent_path().string();
+
+        // Try to find project root (go up until we find src/ or include/)
+        while (!base_path.empty() && base_path != "/") {
+            if (std::filesystem::exists(base_path + "/src") ||
+                std::filesystem::exists(base_path + "/include")) {
+                break;
+            }
+            file_path = file_path.parent_path();
+            base_path = file_path.string();
+        }
+
+        if (base_path.empty() || base_path == "/") {
+            base_path = std::filesystem::path(filepath).parent_path().string();
+        }
+
+        spdlog::debug("Searching for usage examples in base path: {}", base_path);
+
+        enriched.usage_examples = find_usage_examples(
+            target.name,
+            base_path,
+            context_lines,
+            5  // max 5 examples
+        );
+    }
+
+    spdlog::info("Enriched context: {} includes, {} dependencies, {} usage examples",
+                 enriched.includes.size(),
+                 enriched.dependencies.size(),
+                 enriched.usage_examples.size());
 
     return enriched;
 }
@@ -552,6 +679,212 @@ int GetSymbolContextTool::get_line_number(const std::string& source, uint32_t by
         if (source[i] == '\n') line++;
     }
     return line;
+}
+
+// ============================================================================
+// NEW: Cross-file type resolution
+// ============================================================================
+
+std::optional<GetSymbolContextTool::SymbolDefinition>
+GetSymbolContextTool::find_in_search_paths(
+    const std::string& symbol_name,
+    const std::vector<std::string>& search_paths
+) {
+    spdlog::debug("Searching for symbol '{}' in {} search paths", symbol_name, search_paths.size());
+
+    for (const auto& base_path : search_paths) {
+        // Resolve all header files in this search path
+        std::vector<std::filesystem::path> files;
+        try {
+            files = PathResolver::resolve_paths(
+                {base_path},
+                true,  // recursive
+                {"*.hpp", "*.h"}
+            );
+        } catch (const std::exception& e) {
+            spdlog::warn("Failed to resolve path {}: {}", base_path, e.what());
+            continue;
+        }
+
+        spdlog::debug("Searching in {} header files from {}", files.size(), base_path);
+
+        // Search each file for the symbol
+        for (const auto& file : files) {
+            Language lang = LanguageUtils::detect_from_extension(file);
+            if (lang == Language::UNKNOWN) continue;
+
+            auto location = locate_symbol(symbol_name, file.string(), lang);
+            if (location) {
+                spdlog::info("Found symbol '{}' in {}", symbol_name, file.string());
+
+                // Read the file
+                std::ifstream f(file);
+                if (!f.is_open()) {
+                    spdlog::warn("Cannot open file {}", file.string());
+                    continue;
+                }
+                std::string source((std::istreambuf_iterator<char>(f)),
+                                  std::istreambuf_iterator<char>());
+
+                // Extract definition
+                return extract_definition(*location, source);
+            }
+        }
+    }
+
+    spdlog::debug("Symbol '{}' not found in any search path", symbol_name);
+    return std::nullopt;
+}
+
+// ============================================================================
+// NEW: Extended context reading
+// ============================================================================
+
+std::vector<std::string> GetSymbolContextTool::read_context_lines(
+    const std::string& filepath,
+    int center_line,
+    int context_size
+) {
+    std::vector<std::string> result;
+
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        spdlog::warn("Cannot open file {} for context reading", filepath);
+        return result;
+    }
+
+    int start_line = std::max(1, center_line - context_size);
+    int end_line = center_line + context_size;
+
+    std::string line;
+    int current_line = 1;
+
+    while (std::getline(file, line)) {
+        if (current_line >= start_line && current_line <= end_line) {
+            result.push_back(line);
+        }
+        if (current_line > end_line) {
+            break;
+        }
+        current_line++;
+    }
+
+    spdlog::debug("Read {} context lines around line {} in {}", result.size(), center_line, filepath);
+    return result;
+}
+
+// ============================================================================
+// NEW: Find usage examples
+// ============================================================================
+
+std::vector<GetSymbolContextTool::UsageExample>
+GetSymbolContextTool::find_usage_examples(
+    const std::string& symbol_name,
+    const std::string& base_path,
+    int context_lines,
+    int max_examples
+) {
+    std::vector<UsageExample> examples;
+
+    spdlog::debug("Finding usage examples for '{}' in {}", symbol_name, base_path);
+
+    // Get all C++ files in the base path
+    std::vector<std::filesystem::path> files;
+    try {
+        files = PathResolver::resolve_paths(
+            {base_path},
+            true,
+            {"*.cpp", "*.hpp", "*.h"}
+        );
+    } catch (const std::exception& e) {
+        spdlog::warn("Failed to resolve path {}: {}", base_path, e.what());
+        return examples;
+    }
+
+    int found_count = 0;
+
+    for (const auto& file : files) {
+        if (found_count >= max_examples) break;
+
+        // Read file
+        std::ifstream f(file);
+        if (!f.is_open()) continue;
+
+        std::stringstream buffer;
+        buffer << f.rdbuf();
+        std::string source = buffer.str();
+
+        // Parse file
+        Language lang = LanguageUtils::detect_from_extension(file);
+        if (lang == Language::UNKNOWN) continue;
+
+        TreeSitterParser parser(lang);
+        auto tree = parser.parse_string(source);
+        if (!tree) continue;
+
+        TSNode root = ts_tree_root_node(tree->get());
+
+        // Search for call expressions
+        std::function<void(TSNode)> traverse;
+        traverse = [&](TSNode node) {
+            if (found_count >= max_examples) return;
+
+            std::string node_type = ts_node_type(node);
+
+            // Look for call expressions
+            if (node_type == "call_expression") {
+                TSNode func_node = ts_node_child_by_field_name(node, "function", 8);
+                if (!ts_node_is_null(func_node)) {
+                    std::string func_name = get_node_text(func_node, source);
+
+                    // Check if this is our symbol
+                    if (func_name.find(symbol_name) != std::string::npos) {
+                        TSPoint start = ts_node_start_point(node);
+                        int line = static_cast<int>(start.row + 1);
+
+                        UsageExample example;
+                        example.filepath = file.string();
+                        example.line = line;
+                        example.context_lines = read_context_lines(file.string(), line, context_lines);
+
+                        // Try to find parent scope
+                        TSNode parent = ts_node_parent(node);
+                        while (!ts_node_is_null(parent)) {
+                            std::string parent_type = ts_node_type(parent);
+                            if (parent_type == "function_definition") {
+                                TSNode decl = ts_node_child_by_field_name(parent, "declarator", 10);
+                                if (!ts_node_is_null(decl)) {
+                                    example.parent_scope = get_node_text(decl, source);
+                                    // Remove parameter list
+                                    size_t paren = example.parent_scope.find('(');
+                                    if (paren != std::string::npos) {
+                                        example.parent_scope = example.parent_scope.substr(0, paren);
+                                    }
+                                }
+                                break;
+                            }
+                            parent = ts_node_parent(parent);
+                        }
+
+                        examples.push_back(example);
+                        found_count++;
+                        spdlog::debug("Found usage example at {}:{}", file.string(), line);
+                    }
+                }
+            }
+
+            // Recurse
+            uint32_t child_count = ts_node_child_count(node);
+            for (uint32_t i = 0; i < child_count && found_count < max_examples; i++) {
+                traverse(ts_node_child(node, i));
+            }
+        };
+
+        traverse(root);
+    }
+
+    spdlog::info("Found {} usage examples for '{}'", examples.size(), symbol_name);
+    return examples;
 }
 
 } // namespace ts_mcp

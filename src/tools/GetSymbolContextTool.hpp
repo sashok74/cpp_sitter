@@ -77,17 +77,29 @@ private:
     );
 
     // Stage 4: Enrichment - add related context
+    struct UsageExample {
+        std::string filepath;
+        int line;
+        std::vector<std::string> context_lines;
+        std::string parent_scope;
+    };
+
     struct EnrichedContext {
         SymbolDefinition target;
         std::vector<SymbolDefinition> dependencies;
         std::vector<std::string> includes;
+        std::vector<UsageExample> usage_examples;
     };
 
     EnrichedContext enrich_context(
         const SymbolDefinition& target,
         const std::vector<UsedSymbol>& used_symbols,
         const std::string& filepath,
-        Language language
+        Language language,
+        bool resolve_external_types = false,
+        bool include_usage_examples = false,
+        int context_lines = 3,
+        const std::vector<std::string>& search_paths = {}
     );
 
     // Helper: extract signature without body
@@ -114,6 +126,27 @@ private:
 
     // Helper: get line number for position
     int get_line_number(const std::string& source, uint32_t byte_offset);
+
+    // NEW: Cross-file type resolution
+    std::optional<SymbolDefinition> find_in_search_paths(
+        const std::string& symbol_name,
+        const std::vector<std::string>& search_paths
+    );
+
+    // NEW: Read context lines around a specific line
+    std::vector<std::string> read_context_lines(
+        const std::string& filepath,
+        int center_line,
+        int context_size
+    );
+
+    // NEW: Find all usages of a symbol
+    std::vector<UsageExample> find_usage_examples(
+        const std::string& symbol_name,
+        const std::string& base_path,
+        int context_lines,
+        int max_examples = 10
+    );
 
     std::shared_ptr<ASTAnalyzer> analyzer_;
 };
